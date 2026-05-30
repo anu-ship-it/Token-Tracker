@@ -9,11 +9,11 @@
  *  5. Inject the UI bar above the input box
  *  6. Show exhaustion popup when limit is hit
  *
- * Architecture note:
- *  We use a single MutationObserver on the conversation container.
- *  On each mutation batch we re-scan the full conversation — this is O(n) on
- *  message count but cheap because we're just reading textContent.
- *  We do NOT store per-message state to avoid memory leaks on long sessions.
+ * SELECTOR STRATEGY — why we use selector arrays instead of single strings:
+ *   ChatGPT and Claude both update their DOM regularly. A single hardcoded
+ *   selector breaks silently. We try selectors in priority order and use the
+ *   first one that returns results. Adding a new selector on top never breaks
+ *   the old ones — it just takes priority.
  */
 
 (() => {
@@ -23,24 +23,38 @@
 
   const PLATFORMS = {
     chatgpt: {
-      match: () => location.hostname.includes("chatgpt.com") || location.hostname.includes("openai.com"),
-      // Selectors for conversation turns
-      messageSelector: "article[data-testid], div[data-message-id]",
-      // The input textarea
-      inputSelector: "#prompt-textarea, textarea[data-id]",
-      // The form/container wrapping the input — we inject above this
-      inputWrapperSelector: "form, div[class*='stretch']",
-      // Token limits per model (conservative — actual limits are at/above these)
+      match: () =>
+        location.hostname.includes("chatgpt.com") ||
+        location.hostname.includes("openai.com"),
+
+      // Each array is tried in order — first one with matching nodes wins
+      messageSelectors: [
+        "article[data-testid]",
+        "div[data-message-id]",
+        "[data-testid^='conversation-turn']",
+        "div[class*='ConversationItem']",
+      ],
+
+      inputWrapperSelectors: [
+        "form:has(#prompt-textarea)",
+        "form:has(textarea)",
+        "div[class*='composer']",
+        "div[class*='stretch']",
+      ],
+
       limits: {
         default: 128000,
         "gpt-4o": 128000,
         "gpt-4": 128000,
         "gpt-3.5": 16385,
-        "o1": 200000,
-        "o3": 200000,
+        o1: 200000,
+        o3: 200000,
       },
+
       getActiveModel: () => {
-        const btn = document.querySelector("[data-testid='model-switcher-dropdown-button'], button[aria-label*='GPT'], span[class*='model']");
+        const btn = document.querySelector(
+          "[data-testid='model-switcher-dropdown-button'], button[aria-label*='GPT'], span[class*='model-name']"
+        );
         if (!btn) return "default";
         const txt = btn.textContent.toLowerCase();
         if (txt.includes("o3")) return "o3";
@@ -49,7 +63,7 @@
         if (txt.includes("3.5")) return "gpt-3.5";
         return "gpt-4o";
       },
-      // Session ID from URL: /c/<uuid>
+
       getSessionId: () => {
         const m = location.pathname.match(/\/c\/([a-z0-9-]+)/i);
         return m ? m[1] : "home";
@@ -58,9 +72,40 @@
 
     claude: {
       match: () => location.hostname.includes("claude.ai"),
-      messageSelector: "div[data-testid='human-turn'], div[data-testid='ai-turn'], div[class*='Human'], div[class*='Assistant']",
-      inputSelector: "div[contenteditable='true'][data-placeholder], div[contenteditable='true']",
-      inputWrapperSelector: "div[class*='inputArea'], fieldset, div[class*='composer']",
+
+      // Claude's DOM as of 2025-2026.
+      // Strategy: we cast a wide net. Even if class names change, the
+      // structural role attributes (data-testid) tend to be more stable.
+      // The text-content fallback (last entries) grabs the prose containers
+      // directly if all else fails.
+      messageSelectors: [
+        // Most stable — testid attributes
+        "[data-testid='human-turn']",
+        "[data-testid='ai-turn']",
+        "[data-testid='human-turn-content']",
+        "[data-testid='ai-turn-content']",
+        // Class-based fallbacks (Claude uses Tailwind so classes are hashed,
+        // but these structural markers have been consistent)
+        "div[class*='humanTurn']",
+        "div[class*='assistantTurn']",
+        // Widest net — grab any direct child of the scrollable conversation
+        // container. We identify the container first, then its children.
+        // This is handled separately in getMessageNodes() below.
+      ],
+
+      // Claude's input is a contenteditable div, not a textarea.
+      // The wrapper we want to insert above is the outer composer container.
+      inputWrapperSelectors: [
+        // Stable: the fieldset wrapping the entire composer
+        "fieldset",
+        // Class-based fallbacks
+        "div[class*='composer']",
+        "div[class*='inputArea']",
+        "div[class*='InputArea']",
+        // Last resort: the parent of the contenteditable
+        "div[contenteditable='true']",
+      ],
+
       limits: {
         default: 200000,
         "claude-3-5-sonnet": 200000,
@@ -69,8 +114,11 @@
         "claude-sonnet-4": 200000,
         "claude-opus-4": 200000,
       },
+
       getActiveModel: () => "default",
+
       getSessionId: () => {
+        // Claude URL: /chat/<uuid>
         const m = location.pathname.match(/\/chat\/([a-z0-9-]+)/i);
         return m ? m[1] : location.pathname;
       },
@@ -87,18 +135,88 @@
   let lastTokenCount = 0;
   let rafPending = false;
 
+  // ─── Selector Resolution ───────────────────────────────────────────────────
+
+  /**
+   * Try each selector in the array. Return the NodeList from the first one
+   * that actually matches something. If nothing matches, return [].
+   * This is the core of our resilience strategy.
+   */
+  function resolveNodes(selectors) {
+    for (const sel of selectors) {
+      try {
+        const nodes = document.querySelectorAll(sel);
+        if (nodes.length > 0) return Array.from(nodes);
+      } catch (e) {
+        // Invalid selector (e.g. :has() not supported) — skip silently
+      }
+    }
+    return [];
+  }
+
+  /**
+   * For Claude specifically: if the standard selectors all miss,
+   * fall back to finding the scrollable conversation container and
+   * reading its direct children that contain substantial text.
+   * This is the "nuclear option" — works regardless of class names.
+   */
+  function getClaudeMessagesFallback() {
+    // Claude's conversation scroll container has a large scrollHeight
+    // and contains alternating human/AI turns as direct children
+    const candidates = Array.from(
+      document.querySelectorAll("div[class*='scroll'], main > div > div, div[class*='conversation']")
+    );
+
+    for (const container of candidates) {
+      const children = Array.from(container.children);
+      // A real conversation container has multiple children with text
+      const textChildren = children.filter(
+        (el) => (el.textContent || "").trim().length > 20
+      );
+      if (textChildren.length >= 2) {
+        return textChildren;
+      }
+    }
+    return [];
+  }
+
+  function resolveInputWrapper() {
+    const nodes = resolveNodes(platform.inputWrapperSelectors);
+    if (nodes.length > 0) return nodes[0];
+
+    // Last-resort fallback for Claude: find the contenteditable and walk up
+    // to a container that makes sense to insert above
+    if (platform === PLATFORMS.claude) {
+      const ce = document.querySelector("div[contenteditable='true']");
+      if (ce) {
+        // Walk up 3 levels to find a reasonable wrapper
+        let el = ce.parentElement;
+        for (let i = 0; i < 3 && el; i++) {
+          if (el.tagName === "FIELDSET" || el.tagName === "FORM") return el;
+          el = el.parentElement;
+        }
+        return ce.parentElement;
+      }
+    }
+    return null;
+  }
+
   // ─── Init ──────────────────────────────────────────────────────────────────
 
   function init() {
     platform = Object.values(PLATFORMS).find((p) => p.match());
     if (!platform) return;
 
+    lastSessionId = platform.getSessionId();
+
     injectUI();
     startObserver();
     startSessionWatcher();
 
-    // Initial scan after short delay for DOM to settle
-    setTimeout(scan, 1000);
+    // Initial scan — retry a few times in case DOM is still hydrating
+    setTimeout(scan, 800);
+    setTimeout(scan, 2000);
+    setTimeout(scan, 4000);
   }
 
   // ─── Token Scanning ────────────────────────────────────────────────────────
@@ -106,8 +224,14 @@
   function scan() {
     if (!platform) return;
 
-    const messages = Array.from(document.querySelectorAll(platform.messageSelector));
-    const texts = messages.map((el) => el.textContent || "");
+    let messageNodes = resolveNodes(platform.messageSelectors);
+
+    // Claude fallback if primary selectors found nothing
+    if (messageNodes.length === 0 && platform === PLATFORMS.claude) {
+      messageNodes = getClaudeMessagesFallback();
+    }
+
+    const texts = messageNodes.map((el) => el.textContent || "");
     const tokenCount = Tokenizer.estimateMessages(texts);
 
     const model = platform.getActiveModel();
@@ -117,7 +241,6 @@
     updateUI(tokenCount, limit);
   }
 
-  // Debounce via rAF — coalesces rapid DOM mutations into one scan per frame
   function scheduleScan() {
     if (rafPending) return;
     rafPending = true;
@@ -130,16 +253,14 @@
   // ─── Session Reset Detection ───────────────────────────────────────────────
 
   function startSessionWatcher() {
-    // Method 1: URL change (SPA navigation)
     let lastUrl = location.href;
-    const urlTimer = setInterval(() => {
+    setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
         handlePotentialReset();
       }
     }, 500);
 
-    // Method 2: popstate (back/forward)
     window.addEventListener("popstate", handlePotentialReset);
   }
 
@@ -147,36 +268,41 @@
     const currentSessionId = platform.getSessionId();
     if (currentSessionId !== lastSessionId) {
       lastSessionId = currentSessionId;
-      popupShown = false; // allow popup again in new session
-      // Give DOM time to clear before scanning
-      setTimeout(scan, 800);
+      lastTokenCount = 0;
+      popupShown = false;
+      // Re-inject UI in case SPA navigation removed it
+      setTimeout(() => {
+        injectUI();
+        scan();
+      }, 800);
     }
   }
 
   // ─── MutationObserver ──────────────────────────────────────────────────────
 
   function startObserver() {
-    // Observe body — we need to catch the conversation container appearing
-    // after SPA navigation as well as new messages appending
     observer = new MutationObserver((mutations) => {
-      // Quick filter: only process if text content changed
-      const relevant = mutations.some(
-        (m) => m.addedNodes.length > 0 || m.type === "characterData"
-      );
+      const relevant = mutations.some((m) => m.addedNodes.length > 0);
       if (relevant) scheduleScan();
     });
 
     observer.observe(document.body, {
       childList: true,
       subtree: true,
-      characterData: false, // avoid excessive firing on every keypress
+      characterData: false,
     });
   }
 
   // ─── UI Injection ──────────────────────────────────────────────────────────
 
   function injectUI() {
-    if (document.getElementById("tt-bar")) return;
+    // Remove stale bar if present (after SPA navigation)
+    const existing = document.getElementById("tt-bar");
+    if (existing) {
+      // Already in DOM and attached — nothing to do
+      if (document.contains(existing)) return;
+      existing.remove();
+    }
 
     uiBar = document.createElement("div");
     uiBar.id = "tt-bar";
@@ -190,9 +316,8 @@
       </div>
     `;
 
-    // Try to anchor it near the input — fall back to fixed positioning
-    const anchorToInput = () => {
-      const wrapper = document.querySelector(platform.inputWrapperSelector);
+    const tryAnchor = () => {
+      const wrapper = resolveInputWrapper();
       if (wrapper && wrapper.parentNode) {
         wrapper.parentNode.insertBefore(uiBar, wrapper);
         uiBar.classList.add("tt-anchored");
@@ -201,23 +326,20 @@
       return false;
     };
 
-    if (!anchorToInput()) {
+    if (!tryAnchor()) {
       document.body.appendChild(uiBar);
-      // Retry anchoring when DOM loads
       const retryTimer = setInterval(() => {
-        if (anchorToInput()) {
-          clearInterval(retryTimer);
-        }
+        if (tryAnchor()) clearInterval(retryTimer);
       }, 800);
-      setTimeout(() => clearInterval(retryTimer), 10000);
+      setTimeout(() => clearInterval(retryTimer), 15000);
     }
   }
 
   function updateUI(used, limit) {
     const fillEl = document.getElementById("tt-fill");
     const countEl = document.getElementById("tt-count");
+
     if (!fillEl || !countEl) {
-      // UI was removed from DOM (SPA navigation) — re-inject
       injectUI();
       return;
     }
@@ -226,17 +348,19 @@
     const remaining = Math.max(limit - used, 0);
 
     fillEl.style.width = pct + "%";
-    fillEl.className = "tt-fill" + (pct >= 90 ? " tt-critical" : pct >= 70 ? " tt-warn" : "");
+    fillEl.className =
+      "tt-fill" +
+      (pct >= 90 ? " tt-critical" : pct >= 70 ? " tt-warn" : "");
 
     countEl.textContent = `${formatK(remaining)} left`;
-    countEl.className = "tt-count" + (pct >= 90 ? " tt-critical" : pct >= 70 ? " tt-warn" : "");
+    countEl.className =
+      "tt-count" +
+      (pct >= 90 ? " tt-critical" : pct >= 70 ? " tt-warn" : "");
 
-    // Update bar tooltip
     if (uiBar) {
       uiBar.title = `~${formatK(used)} tokens used of ~${formatK(limit)} limit`;
     }
 
-    // Trigger popup at 100%
     if (remaining === 0 && !popupShown) {
       popupShown = true;
       showExhaustedPopup(limit);
@@ -244,8 +368,7 @@
   }
 
   function formatK(n) {
-    if (n >= 1000) return (n / 1000).toFixed(1) + "k";
-    return String(n);
+    return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
   }
 
   // ─── Exhaustion Popup ──────────────────────────────────────────────────────
@@ -275,11 +398,11 @@
       setTimeout(() => popup.remove(), 300);
     });
 
-    // Auto-dismiss after 12s
     setTimeout(() => {
-      if (document.getElementById("tt-popup")) {
-        popup.classList.add("tt-popup-fade");
-        setTimeout(() => popup.remove(), 300);
+      const p = document.getElementById("tt-popup");
+      if (p) {
+        p.classList.add("tt-popup-fade");
+        setTimeout(() => p.remove(), 300);
       }
     }, 12000);
   }
@@ -291,29 +414,20 @@
   } else {
     init();
   }
+
+  // ─── Popup Query Handler ──────────────────────────────────────────────────
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === "GET_TOKEN_STATE") {
+      const p = platform;
+      const model = p ? p.getActiveModel() : "default";
+      const limit = p ? p.limits[model] || p.limits.default : 128000;
+      const platformName = location.hostname.includes("claude.ai")
+        ? "Claude"
+        : "ChatGPT";
+
+      sendResponse({ used: lastTokenCount, limit, platform: platformName, model });
+    }
+    return true;
+  });
+
 })();
-
-
-// ─── Popup Query Handler ──────────────────────────────────────────────────────
-// Responds to popup.js requesting current state
-
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === "GET_TOKEN_STATE") {
-    const model = platform ? platform.getActiveModel() : "default";
-    const limit = platform
-      ? platform.limits[model] || platform.limits.default
-      : 128000;
-
-    const platformName = location.hostname.includes("claude.ai")
-      ? "Claude"
-      : "ChatGPT";
-
-    sendResponse({
-      used: lastTokenCount,
-      limit,
-      platform: platformName,
-      model,
-    });
-  }
-  return true; // Keep message channel open for async
-});
