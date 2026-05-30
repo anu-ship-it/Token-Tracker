@@ -1,0 +1,17 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Build artifacts (for when you add a build step later)
+dist/
+*.zip
+
+# Environment (if you ever add a settings page with API keys)
+.env
+.env.local
