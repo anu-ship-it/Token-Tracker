@@ -1,35 +1,36 @@
 /**
- * content.js
- * 
- * Responsbilities:
- *  1. Detect which platform (Chatgpt / Claude)
- *  2. Read all visible conversition message from the DOM
+ * content.js — Core logic
+ *
+ * Responsibilities:
+ *  1. Detect which platform (ChatGPT / Claude)
+ *  2. Read all visible conversation messages from the DOM
  *  3. Count tokens for the current session
  *  4. Detect session resets (new chat) and zero the counter
  *  5. Inject the UI bar above the input box
  *  6. Show exhaustion popup when limit is hit
- * 
+ *
  * Architecture note:
- *   We use a single MutationObserver on the conversation container.
- *   On each mutation batch we re-scan the full conversation - this is o(n) on
- *   message count but cheap because we're just reading textContent.
- *   We do NOT store per-message state to avoid memory leaks on long sessions.
+ *  We use a single MutationObserver on the conversation container.
+ *  On each mutation batch we re-scan the full conversation — this is O(n) on
+ *  message count but cheap because we're just reading textContent.
+ *  We do NOT store per-message state to avoid memory leaks on long sessions.
  */
 
-{() => {
+(() => {
   "use strict";
 
   // ─── Platform Config ──────────────────────────────────────────────────────
 
   const PLATFORMS = {
     chatgpt: {
+      match: () => location.hostname.includes("chatgpt.com") || location.hostname.includes("openai.com"),
       // Selectors for conversation turns
       messageSelector: "article[data-testid], div[data-message-id]",
       // The input textarea
       inputSelector: "#prompt-textarea, textarea[data-id]",
       // The form/container wrapping the input — we inject above this
       inputWrapperSelector: "form, div[class*='stretch']",
-      // Token limits per model (conservative — actual limits are at/above these) 
+      // Token limits per model (conservative — actual limits are at/above these)
       limits: {
         default: 128000,
         "gpt-4o": 128000,
@@ -39,7 +40,7 @@
         "o3": 200000,
       },
       getActiveModel: () => {
-        const btn = document.querySelector("[data-textid='modal-switcher-dropdown-button'], button[aria-label*='GPT'], span[class*='model']");
+        const btn = document.querySelector("[data-testid='model-switcher-dropdown-button'], button[aria-label*='GPT'], span[class*='model']");
         if (!btn) return "default";
         const txt = btn.textContent.toLowerCase();
         if (txt.includes("o3")) return "o3";
@@ -48,7 +49,7 @@
         if (txt.includes("3.5")) return "gpt-3.5";
         return "gpt-4o";
       },
-      // Session ID from URL:  /c/<uuid>
+      // Session ID from URL: /c/<uuid>
       getSessionId: () => {
         const m = location.pathname.match(/\/c\/([a-z0-9-]+)/i);
         return m ? m[1] : "home";
@@ -57,7 +58,7 @@
 
     claude: {
       match: () => location.hostname.includes("claude.ai"),
-      messageSelector: "div[data-textid='human-turn'], div[data-testid='ai-turn'], div[class*='Human'], div[class*='Assistant']",
+      messageSelector: "div[data-testid='human-turn'], div[data-testid='ai-turn'], div[class*='Human'], div[class*='Assistant']",
       inputSelector: "div[contenteditable='true'][data-placeholder], div[contenteditable='true']",
       inputWrapperSelector: "div[class*='inputArea'], fieldset, div[class*='composer']",
       limits: {
@@ -96,25 +97,25 @@
     startObserver();
     startSessionWatcher();
 
-    // Initial scan after short deplay for DOM to settle
+    // Initial scan after short delay for DOM to settle
     setTimeout(scan, 1000);
   }
 
-   // ─── Token Scanning ────────────────────────────────────────────────────────
+  // ─── Token Scanning ────────────────────────────────────────────────────────
 
   function scan() {
     if (!platform) return;
 
-    const message = Array.from(document.querySelectorAll(platform.messageSelector));
-    const texts = message.map((el) => el.textContent || "");
+    const messages = Array.from(document.querySelectorAll(platform.messageSelector));
+    const texts = messages.map((el) => el.textContent || "");
     const tokenCount = Tokenizer.estimateMessages(texts);
 
     const model = platform.getActiveModel();
-    const limit = platform.limits[modal] || platform.limit.default;
+    const limit = platform.limits[model] || platform.limits.default;
 
     lastTokenCount = tokenCount;
     updateUI(tokenCount, limit);
-  } 
+  }
 
   // Debounce via rAF — coalesces rapid DOM mutations into one scan per frame
   function scheduleScan() {
@@ -152,13 +153,13 @@
     }
   }
 
-  //  ─── MutationObserver ──────────────────────────────────────────────────────
+  // ─── MutationObserver ──────────────────────────────────────────────────────
 
   function startObserver() {
-    // Observe body - we need to catch the conversation container appearing
-    // after SPA navigation as well as new message appending
+    // Observe body — we need to catch the conversation container appearing
+    // after SPA navigation as well as new messages appending
     observer = new MutationObserver((mutations) => {
-      // Quick filter: only process if text content changes
+      // Quick filter: only process if text content changed
       const relevant = mutations.some(
         (m) => m.addedNodes.length > 0 || m.type === "characterData"
       );
@@ -180,7 +181,7 @@
     uiBar = document.createElement("div");
     uiBar.id = "tt-bar";
     uiBar.innerHTML = `
-    <div class="tt-inner">
+      <div class="tt-inner">
         <span class="tt-label">TOKENS</span>
         <div class="tt-track">
           <div class="tt-fill" id="tt-fill"></div>
@@ -189,7 +190,7 @@
       </div>
     `;
 
-    // Try to anchor it near the input - fall back to fixed positioning
+    // Try to anchor it near the input — fall back to fixed positioning
     const anchorToInput = () => {
       const wrapper = document.querySelector(platform.inputWrapperSelector);
       if (wrapper && wrapper.parentNode) {
@@ -213,10 +214,10 @@
   }
 
   function updateUI(used, limit) {
-    const fillE1 = document.getElementById("tt-fill");
-    const countE1 = document.getElementById("tt-count");
-    if (!fillE1 || !countE1) {
-      // UI was removed from DOM (SPA navigation) - re-inject
+    const fillEl = document.getElementById("tt-fill");
+    const countEl = document.getElementById("tt-count");
+    if (!fillEl || !countEl) {
+      // UI was removed from DOM (SPA navigation) — re-inject
       injectUI();
       return;
     }
@@ -224,15 +225,15 @@
     const pct = Math.min((used / limit) * 100, 100);
     const remaining = Math.max(limit - used, 0);
 
-    fillE1.style.width = pct + "%";
-    fillE1.className = "tt-fill" + (pct >= 90 ? " tt-critical" : pct >= 70 ? " tt-warn" : "");
+    fillEl.style.width = pct + "%";
+    fillEl.className = "tt-fill" + (pct >= 90 ? " tt-critical" : pct >= 70 ? " tt-warn" : "");
 
-    countE1.textContent = `${formatK(remaining)} left`;
-    countE1.className = "tt-count" + (pct >= 90 ? " tt-critical" : pct >= 70 ? " tt-warn" : "");
+    countEl.textContent = `${formatK(remaining)} left`;
+    countEl.className = "tt-count" + (pct >= 90 ? " tt-critical" : pct >= 70 ? " tt-warn" : "");
 
     // Update bar tooltip
     if (uiBar) {
-      uiBar.title = `-${formatK(used)} tokens used of -${formatK(limit)} limit`;
+      uiBar.title = `~${formatK(used)} tokens used of ~${formatK(limit)} limit`;
     }
 
     // Trigger popup at 100%
@@ -296,24 +297,23 @@
 // ─── Popup Query Handler ──────────────────────────────────────────────────────
 // Responds to popup.js requesting current state
 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) -> {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "GET_TOKEN_STATE") {
     const model = platform ? platform.getActiveModel() : "default";
     const limit = platform
-      ? platform.limits[model] || platfrom.limits.default
+      ? platform.limits[model] || platform.limits.default
       : 128000;
 
     const platformName = location.hostname.includes("claude.ai")
       ? "Claude"
-      : "Chatgpt";
-      
+      : "ChatGPT";
+
     sendResponse({
       used: lastTokenCount,
       limit,
       platform: platformName,
       model,
-    });  
+    });
   }
   return true; // Keep message channel open for async
 });
-
