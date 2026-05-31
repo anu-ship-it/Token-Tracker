@@ -42,7 +42,7 @@
               const texts = Array.from(nodes).map((n) => n.textContent || "");
               return Tokenizer.estimateMessages(texts);
             }
-          } catch (_) {}
+          } catch (_) { }
         }
         return 0;
       },
@@ -96,53 +96,33 @@
        * doesn't inflate the count.
        */
       getTokens: () => {
-        // Find conversation container — largest scrollable div under main
-        const main = document.querySelector("main");
-        if (!main) return 0;
+        // Conversation lives in a classless div directly under body, outside <main>
+        // Find it by getting the body child with the most text content
+        const bodyChildren = Array.from(document.body.children);
 
-        // Walk all descendants, find the one with most text that isn't
-        // the input box itself
         let bestEl = null;
         let bestLen = 0;
 
-        const inputText = (() => {
-          const ce = document.querySelector("div[contenteditable='true']");
-          return ce ? (ce.textContent || "").trim() : "";
-        })();
-
-        // Check direct children of main first (most likely structure)
-        const candidates = Array.from(main.querySelectorAll("div, section, article"));
-
-        for (const el of candidates) {
-          // Skip the input area entirely
-          if (el.contains(document.querySelector("div[contenteditable='true']"))) continue;
-          // Skip tiny elements
-          const text = (el.textContent || "").trim();
-          if (text.length < 100) continue;
-          // Prefer elements that look like conversation containers:
-          // high text length, not too many direct children (not a layout wrapper)
-          if (text.length > bestLen) {
-            bestLen = text.length;
+        for (const el of bodyChildren) {
+          // Skip our own injected bar and popup
+          if (el.id === 'tt-bar' || el.id === 'tt-popup') continue;
+          const len = (el.textContent || '').trim().length;
+          if (len > bestLen) {
+            bestLen = len;
             bestEl = el;
           }
         }
 
-        if (!bestEl) return 0;
+        if (!bestEl || bestLen < 100) return 0;
 
-        // Get text, remove the input content to avoid double-counting
-        let text = (bestEl.textContent || "").trim();
-        if (inputText && text.endsWith(inputText)) {
-          text = text.slice(0, -inputText.length).trim();
+        // Subtract the input box text to avoid counting half-typed messages
+        const inputEl = document.querySelector("div[contenteditable='true']");
+        const inputText = inputEl ? (inputEl.textContent || '').trim() : '';
+
+        let text = (bestEl.textContent || '').trim();
+        if (inputText && text.includes(inputText)) {
+          text = text.replace(inputText, '');
         }
-
-        // Subtract common UI chrome that appears in every page
-        // (these are constant strings Claude always renders)
-        const UI_CHROME = [
-          "New conversation", "Start new chat", "Recents",
-          "Yesterday", "Previous 7 days", "Previous 30 days",
-          "Help & support", "Settings", "Token Tracker",
-        ];
-        UI_CHROME.forEach((s) => { text = text.replace(s, ""); });
 
         return Tokenizer.estimate(text);
       },
@@ -259,7 +239,7 @@
       try {
         const el = document.querySelector(sel);
         if (el) return el;
-      } catch (_) {}
+      } catch (_) { }
     }
     return null;
   }
@@ -300,8 +280,10 @@
     const tryAnchor = () => {
       const wrapper = resolveInputWrapper();
       if (wrapper && wrapper.parentNode) {
-        wrapper.parentNode.insertBefore(uiBar, wrapper);
-        uiBar.classList.add("tt-anchored");
+        const parent = wrapper.parentNode;
+        if (!parent.contains(uiBar)) {
+          parent.insertBefore(uiBar, wrapper);
+        }
         return true;
       }
       return false;
