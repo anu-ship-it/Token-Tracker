@@ -15,6 +15,7 @@ async function init() {
   document.getElementById("notify_100").checked     = s.notify_at_100;
   document.getElementById("show_bar").checked       = s.show_context_bar;
   document.getElementById("refresh_minutes").value  = String(s.refresh_minutes);
+  document.getElementById("back-btn").addEventListener("click", () => window.close());
 }
 
 document.getElementById("save-btn").addEventListener("click", async () => {
