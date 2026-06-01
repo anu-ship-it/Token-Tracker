@@ -76,24 +76,31 @@ async function updateIcon() {
 }
 
 async function setIcon(outerPct, innerPct) {
-  const SIZE = 32;
-  // We can't use OffscreenCanvas directly in SW reliably across all Chrome versions
-  // Use canvas via offscreen document
-  try {
+  // Check if offscreen document already exists
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: ["OFFSCREEN_DOCUMENT"],
+  });
+
+  if (existingContexts.length === 0) {
     await chrome.offscreen.createDocument({
-      url: chrome.runtime.getURL("../lib/offscreen.html"),
+      url: chrome.runtime.getURL("lib/offscreen.html"),
       reasons: ["CANVAS"],
       justification: "Render token usage rings onto toolbar icon",
     });
-  } catch {
-    // Already exists — that's fine
   }
 
-  chrome.runtime.sendMessage({
-    type:     "RENDER_ICON",
-    outer:    outerPct,
-    inner:    innerPct,
-  });
+  // Small delay to ensure the document is ready to receive messages
+  await new Promise(res => setTimeout(res, 100));
+
+  try {
+    chrome.runtime.sendMessage({
+      type:  "RENDER_ICON",
+      outer: outerPct,
+      inner: innerPct,
+    });
+  } catch (_) {
+    // Offscreen doc not ready — skip this render cycle, next alarm will retry
+  }
 }
 
 // ── Message handler ────────────────────────────────────────────────
