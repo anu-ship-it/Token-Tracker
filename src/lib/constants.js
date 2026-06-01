@@ -1,10 +1,18 @@
-const TT_CONSTANTS = {
-  CLAUDE_API: {
-    ORGANIZATIONS: "/api/organizations",
-    USAGE:        (id) => `/api/organizations/${id}/usage`,
-    RATE_LIMITS:  (id) => `/api/organizations/${id}/rate_limits`,
+/**
+ * constants.js
+ * Single source of truth. Nothing is hardcoded anywhere else.
+ */
+
+const TT = {
+
+  // ── Claude API ─────────────────────────────────────────────────
+  API: {
+    ORGS:       "https://claude.ai/api/organizations",
+    USAGE:      (id) => `https://claude.ai/api/organizations/${id}/usage`,
   },
-  CONTEXT_LIMITS: {
+
+  // ── Context window limits per model ───────────────────────────
+  LIMITS: {
     "default":         200000,
     "claude-sonnet-4": 200000,
     "claude-opus-4":   200000,
@@ -15,22 +23,37 @@ const TT_CONSTANTS = {
     "o1":              200000,
     "o3":              200000,
   },
-  THRESHOLDS: { WARN: 70, DANGER: 90, CRITICAL: 100 },
-  COLORS: { GREEN: "#22c55e", YELLOW: "#f59e0b", RED: "#ef4444", DIM: "#1c1c1c" },
-  ALARMS: { FETCH_USAGE: "tt_fetch_usage", FETCH_INTERVAL_MINUTES: 5 },
-  STORAGE_KEYS: {
-    CLAUDE_ORG_ID:   "tt_claude_org_id",
-    CLAUDE_USAGE:    "tt_claude_usage",
-    CONTEXT:         "tt_context",
-    HISTORY:         "tt_history",
-    SETTINGS:        "tt_settings",
-    LAST_NOTIFIED:   "tt_last_notified",
+
+  // ── Thresholds ─────────────────────────────────────────────────
+  WARN:     70,
+  DANGER:   90,
+
+  // ── Colors ────────────────────────────────────────────────────
+  COLOR: {
+    GREEN:  "#22c55e",
+    YELLOW: "#f59e0b",
+    RED:    "#ef4444",
   },
-  DEFAULT_SETTINGS: {
-    notify_at_70: true,
-    notify_at_90: true,
-    notify_at_100: true,
+
+  // ── Storage keys ──────────────────────────────────────────────
+  KEY: {
+    ORG_ID:    "tt_org_id",
+    USAGE:     "tt_claude_usage",
+    CONTEXT:   "tt_context",
+    HISTORY:   "tt_history",
+    SETTINGS:  "tt_settings",
+    NOTIFIED:  "tt_last_notified",
+  },
+
+  // ── Alarm ─────────────────────────────────────────────────────
+  ALARM: "tt_fetch",
+
+  // ── Default settings ──────────────────────────────────────────
+  DEFAULTS: {
+    notify_70:       true,
+    notify_90:       true,
+    notify_100:      true,
     refresh_minutes: 5,
-    show_context_bar: true,
+    show_bar:        true,
   },
 };
