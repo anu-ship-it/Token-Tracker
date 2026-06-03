@@ -46,8 +46,61 @@ function countdown(resetsAt) {
   return h > 0 ? `Resets in ${h}h ${m}m` : `Resets in ${m}m`;
 }
 
+// ── Rate limit row (Claude) ────────────────────────────────────────
+function rateRow(name, utilization, resetsAt) {
+  const pct   = Math.min(utilization || 0, 100);
+  const color = colorFor(pct);
+  const reset = countdown(resetsAt);
+  return `
+    <div class="rate-row">
+      <div>
+        <div class="rate-name">${name}</div>
+        <div class="rate-reset">${reset || "—"}</div>
+      </div>
+      <div class="rate-right">
+        <span class="rate-pct ${colorClass(pct)}">${pct}%</span>
+        <div class="rate-mini-track">
+          <div class="rate-mini-fill" style="width:${pct}%;background:${color}"></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Session history (ChatGPT) ──────────────────────────────────────
+function sessionHistory(history, platform) {
+  // Filter to this platform's sessions, last 5
+  const sessions = history
+    .filter(h => h.platform === platform)
+    .slice(-5)
+    .reverse();
+
+  if (sessions.length === 0) {
+    return `<div class="no-history">No sessions recorded yet.<br>Start chatting to build history.</div>`;
+  }
+
+  return sessions.map((s, i) => {
+    const pct   = safePct(s.used, s.limit);
+    const color = colorFor(pct);
+    const date  = new Date(s.ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const label = i === 0 ? "Today" : date;
+    return `
+      <div class="rate-row">
+        <div>
+          <div class="rate-name">${label}</div>
+          <div class="rate-reset">~${fk(s.used)} of ${fk(s.limit)} used</div>
+        </div>
+        <div class="rate-right">
+          <span class="rate-pct ${colorClass(pct)}">${pct}%</span>
+          <div class="rate-mini-track">
+            <div class="rate-mini-fill" style="width:${pct}%;background:${color}"></div>
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+}
+
 // ── Render ─────────────────────────────────────────────────────────
-function render({ usage, context, platform }) {
+function render({ usage, context, history, platform }) {
   const root     = document.getElementById("root");
   const isClaude = platform === "claude";
   const ctx      = context?.[platform] || {};
@@ -56,11 +109,9 @@ function render({ usage, context, platform }) {
   const ctxPct   = safePct(used, limit);
   const ctxColor = colorFor(ctxPct);
 
-  // Platform badge
   const badgeClass = isClaude ? "badge-claude" : platform === "chatgpt" ? "badge-chatgpt" : "badge-none";
   const badgeLabel = isClaude ? "Claude" : platform === "chatgpt" ? "ChatGPT" : "—";
 
-  // Hero pct — for Claude use highest of rate limits vs context
   let heroPct = ctxPct;
   if (isClaude && usage) {
     heroPct = Math.max(
@@ -70,6 +121,22 @@ function render({ usage, context, platform }) {
     );
   }
   const heroColor = colorFor(heroPct);
+
+  // Second section — rate limits for Claude, session history for ChatGPT
+  const secondSection = isClaude && usage ? `
+    <div class="section">
+      <div class="section-title">Rate Limits</div>
+      <div class="rate-card">
+        ${rateRow("5-Hour Session", usage.five_hour?.utilization, usage.five_hour?.resets_at)}
+        ${rateRow("7-Day Weekly",   usage.seven_day?.utilization, usage.seven_day?.resets_at)}
+      </div>
+    </div>` : `
+    <div class="section">
+      <div class="section-title">Session History</div>
+      <div class="rate-card">
+        ${sessionHistory(history || [], platform)}
+      </div>
+    </div>`;
 
   root.innerHTML = `
     <div class="hd">
@@ -85,7 +152,6 @@ function render({ usage, context, platform }) {
       </div>
     </div>
 
-    <!-- Context window -->
     <div class="section">
       <div class="section-title">Context Window</div>
       <div class="ctx-row">
@@ -106,15 +172,7 @@ function render({ usage, context, platform }) {
       </div>
     </div>
 
-    <!-- Claude rate limits -->
-    ${isClaude && usage ? `
-    <div class="section">
-      <div class="section-title">Rate Limits</div>
-      <div class="rate-card">
-        ${rateRow("5-Hour Session", usage.five_hour?.utilization, usage.five_hour?.resets_at)}
-        ${rateRow("7-Day Weekly",   usage.seven_day?.utilization, usage.seven_day?.resets_at)}
-      </div>
-    </div>` : ""}
+    ${secondSection}
 
     <div class="footer">
       <span class="footer-note">chars ÷ 4 · ±8% · v2.0.0</span>
@@ -136,38 +194,18 @@ function render({ usage, context, platform }) {
 
   document.getElementById("new-chat-btn").addEventListener("click", async () => {
     if (used > 50) {
-      await chrome.storage.local.get([TT.KEY.HISTORY], async (r) => {
-        const h   = r[TT.KEY.HISTORY] || [];
-        const key = platform + "_" + new Date().toDateString();
-        const idx = h.findIndex(x => x.key === key);
-        const rec = { used, limit, platform, key, ts: Date.now() };
-        if (idx >= 0) h[idx] = rec; else h.push(rec);
-        await chrome.storage.local.set({ [TT.KEY.HISTORY]: h.slice(-60) });
-      });
+      const r = await chrome.storage.local.get([TT.KEY.HISTORY]);
+      const h   = r[TT.KEY.HISTORY] || [];
+      const key = platform + "_" + new Date().toDateString();
+      const idx = h.findIndex(x => x.key === key);
+      const rec = { used, limit, platform, key, ts: Date.now() };
+      if (idx >= 0) h[idx] = rec; else h.push(rec);
+      await chrome.storage.local.set({ [TT.KEY.HISTORY]: h.slice(-60) });
     }
     const url = isClaude ? "https://claude.ai/new" : "https://chatgpt.com/";
     chrome.tabs.update({ url });
     window.close();
   });
-}
-
-function rateRow(name, utilization, resetsAt) {
-  const pct   = Math.min(utilization || 0, 100);
-  const color = colorFor(pct);
-  const reset = countdown(resetsAt);
-  return `
-    <div class="rate-row">
-      <div>
-        <div class="rate-name">${name}</div>
-        <div class="rate-reset">${reset || "—"}</div>
-      </div>
-      <div class="rate-right">
-        <span class="rate-pct ${colorClass(pct)}">${pct}%</span>
-        <div class="rate-mini-track">
-          <div class="rate-mini-fill" style="width:${pct}%;background:${color}"></div>
-        </div>
-      </div>
-    </div>`;
 }
 
 function renderEmpty() {
@@ -203,20 +241,34 @@ async function init() {
   if (!ok) { renderEmpty(); return; }
 
   const platform = url.includes("claude.ai") ? "claude" : "chatgpt";
-
-  // Get stored data
-  const data = await chrome.runtime.sendMessage({ type: "GET_ALL_DATA" });
+  const data     = await chrome.runtime.sendMessage({ type: "GET_ALL_DATA" });
 
   // Get live context from content script
   try {
     const live = await chrome.tabs.sendMessage(tab.id, { type: "GET_CONTEXT_STATE" });
     if (live?.used !== undefined) {
-      data.context        = data.context || {};
+      data.context           = data.context || {};
       data.context[platform] = { used: live.used, limit: live.limit };
+
+      // Auto-save to history if meaningful
+      if (live.used > 50) {
+        const h   = data.history || [];
+        const key = platform + "_" + new Date().toDateString();
+        const idx = h.findIndex(x => x.key === key);
+        const rec = { used: live.used, limit: live.limit, platform, key, ts: Date.now() };
+        if (idx >= 0) h[idx] = rec; else h.push(rec);
+        data.history = h.slice(-60);
+        chrome.storage.local.set({ [TT.KEY.HISTORY]: data.history });
+      }
     }
   } catch (_) {}
 
-  render({ usage: data.usage, context: data.context || {}, platform });
+  render({
+    usage:    data.usage,
+    context:  data.context || {},
+    history:  data.history || [],
+    platform,
+  });
 }
 
 init();
