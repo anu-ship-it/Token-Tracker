@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Welcome to Token Tracker</title>
+  <title>Welcome — Token Tracker</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #080808; color: #f0f0f0;
+      background: #0a0a0a; color: #f0f0f0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       -webkit-font-smoothing: antialiased;
       min-height: 100vh; display: flex;
@@ -14,84 +14,94 @@
       padding: 40px 16px;
     }
     .card {
-      width: 100%; max-width: 420px;
+      width: 100%; max-width: 400px;
       background: #0e0e0e; border: 1px solid #161616;
-      border-radius: 20px; padding: 40px 36px;
+      border-radius: 18px; padding: 36px 32px;
       text-align: center;
     }
     .logo {
-      width: 56px; height: 56px; border-radius: 16px;
+      width: 52px; height: 52px; border-radius: 14px;
       background: linear-gradient(135deg, #22c55e, #15803d);
       display: flex; align-items: center; justify-content: center;
-      font-size: 26px; font-weight: 800; color: #fff;
-      margin: 0 auto 20px;
+      font-size: 24px; font-weight: 800; color: #fff;
+      margin: 0 auto 18px;
     }
-    h1 { font-size: 22px; font-weight: 700; color: #e0e0e0; margin-bottom: 8px; }
-    .sub { font-size: 13px; color: #444; line-height: 1.6; margin-bottom: 32px; }
-
-    .steps { text-align: left; margin-bottom: 32px; display: flex; flex-direction: column; gap: 14px; }
-    .step { display: flex; align-items: flex-start; gap: 12px; }
-    .step-num {
-      width: 24px; height: 24px; border-radius: 50%;
-      background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.2);
-      color: #22c55e; font-size: 11px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; margin-top: 1px;
-    }
-    .step-text { font-size: 12px; color: #888; line-height: 1.55; }
-    .step-text strong { color: #c0c0c0; }
+    h1 { font-size: 20px; font-weight: 700; color: #d0d0d0; margin-bottom: 6px; }
+    .sub { font-size: 12px; color: #333; line-height: 1.6; margin-bottom: 26px; }
 
     .platforms {
-      display: flex; gap: 10px; margin-bottom: 28px;
+      display: flex; gap: 8px; margin-bottom: 26px;
     }
-    .platform {
-      flex: 1; padding: 10px;
-      border-radius: 10px; border: 1px solid #1a1a1a;
+    .plat {
+      flex: 1; padding: 10px 8px;
+      border-radius: 8px; border: 1px solid #161616;
       font-size: 12px; font-weight: 600;
     }
-    .platform.claude { color: #e8894a; background: rgba(232,137,74,.06); }
-    .platform.gpt    { color: #19c37d; background: rgba(25,195,125,.06); }
+    .plat.claude  { color: #e8894a; background: rgba(232,137,74,.06); }
+    .plat.chatgpt { color: #19c37d; background: rgba(25,195,125,.06); }
+
+    .steps { text-align: left; margin-bottom: 26px; display: flex; flex-direction: column; gap: 12px; }
+    .step  { display: flex; align-items: flex-start; gap: 10px; }
+    .num {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.2);
+      color: #22c55e; font-size: 10px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+    .step-text { font-size: 12px; color: #555; line-height: 1.55; }
+    .step-text strong { color: #999; }
 
     .cta {
-      width: 100%; padding: 14px;
+      width: 100%; padding: 13px;
       background: #22c55e; color: #000;
-      border: none; border-radius: 12px;
+      border: none; border-radius: 10px;
       font-size: 13px; font-weight: 700;
       cursor: pointer; font-family: inherit;
       transition: opacity .15s;
     }
     .cta:hover { opacity: .85; }
-    .note { font-size: 10px; color: #222; margin-top: 14px; line-height: 1.6; }
+    .note { font-size: 10px; color: #1e1e1e; margin-top: 12px; line-height: 1.6; }
   </style>
 </head>
 <body>
   <div class="card">
     <div class="logo">T</div>
     <h1>Token Tracker</h1>
-    <p class="sub">Live context window & rate limit tracking for Claude and ChatGPT.</p>
+    <p class="sub">Context window and rate limit tracking for Claude and ChatGPT.</p>
 
     <div class="platforms">
-      <div class="platform claude">◎ Claude</div>
-      <div class="platform gpt">◎ ChatGPT</div>
+      <div class="plat claude">◎ Claude</div>
+      <div class="plat chatgpt">◎ ChatGPT</div>
     </div>
 
     <div class="steps">
       <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-text"><strong>Pin the extension</strong> to your toolbar — the icon shows your usage rings at a glance without opening the popup.</div>
+        <div class="num">1</div>
+        <div class="step-text">
+          <strong>Pin the extension</strong> to your toolbar — the icon is always visible without opening the popup.
+        </div>
       </div>
       <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-text"><strong>Open Claude or ChatGPT</strong> — a live token bar appears above the input box showing context window usage.</div>
+        <div class="num">2</div>
+        <div class="step-text">
+          <strong>Open Claude or ChatGPT</strong> — a live token bar appears above the input box tracking your context window.
+        </div>
       </div>
       <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-text"><strong>Click the icon</strong> anytime to see detailed usage: context window, Claude rate limits (5-hour & 7-day), and session history.</div>
+        <div class="num">3</div>
+        <div class="step-text">
+          <strong>Click the icon</strong> to see context usage, Claude's 5-hour and 7-day rate limits, and reset countdowns.
+        </div>
       </div>
     </div>
 
-    <button class="cta" onclick="window.close()">Get Started</button>
-    <p class="note">All data stays on your device. No tracking, no servers, no accounts.</p>
+    <button class="cta" id="start-btn">Get Started</button>
+    <p class="note">All data stays on your device. No servers, no accounts, no tracking.</p>
   </div>
+
+  <script>
+    document.getElementById("start-btn").addEventListener("click", () => window.close());
+  </script>
 </body>
 </html>
