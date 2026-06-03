@@ -1,43 +1,32 @@
 /**
  * content.js
- * Runs on both ChatGPT and Claude pages.
+ * Runs on ChatGPT and Claude pages.
+ *
  * Responsibilities:
- *  1. Detect platform
- *  2. Count context window tokens (both platforms)
- *  3. Fetch Claude API usage (Claude only — has cookie access here)
- *  4. Inject in-page token bar above input
- *  5. Report data to service worker
+ *  1. Count context window tokens (both platforms)
+ *  2. Fetch Claude API usage and send to service worker
+ *  3. Inject token bar above input box
+ *  4. Detect session resets and zero the counter
+ *  5. Show exhaustion popup at 100%
  */
 
 (() => {
   "use strict";
 
-  // ── Platform detection ────────────────────────────────────────────
   const IS_CLAUDE = location.hostname.includes("claude.ai");
-  const IS_GPT    = location.hostname.includes("chatgpt.com") || location.hostname.includes("openai.com");
+  const IS_GPT    = location.hostname.includes("chatgpt.com") ||
+                    location.hostname.includes("openai.com");
   if (!IS_CLAUDE && !IS_GPT) return;
 
   const PLATFORM = IS_CLAUDE ? "claude" : "chatgpt";
 
-  // ── State ─────────────────────────────────────────────────────────
-  let lastTokenCount  = 0;
-  let lastSessionId   = getSessionId();
-  let popupShown      = false;
-  let rafPending      = false;
-  let observer        = null;
+  // ── State ──────────────────────────────────────────────────────
+  let lastTokenCount = 0;
+  let lastSessionId  = getSessionId();
+  let popupShown     = false;
+  let rafPending     = false;
 
-  // ── Context limit ─────────────────────────────────────────────────
-  function getLimit() {
-    if (IS_CLAUDE) return TT_CONSTANTS.CONTEXT_LIMITS["default"];
-    const btn = document.querySelector("[data-testid='model-switcher-dropdown-button'], button[aria-label*='GPT']");
-    const txt = btn ? btn.textContent.toLowerCase() : "";
-    if (txt.includes("o3"))  return TT_CONSTANTS.CONTEXT_LIMITS["o3"];
-    if (txt.includes("o1"))  return TT_CONSTANTS.CONTEXT_LIMITS["o1"];
-    if (txt.includes("4o"))  return TT_CONSTANTS.CONTEXT_LIMITS["gpt-4o"];
-    if (txt.includes("3.5")) return TT_CONSTANTS.CONTEXT_LIMITS["gpt-3.5"];
-    return TT_CONSTANTS.CONTEXT_LIMITS["gpt-4o"];
-  }
-
+  // ── Session ID ─────────────────────────────────────────────────
   function getSessionId() {
     if (IS_CLAUDE) {
       const m = location.pathname.match(/\/chat\/([a-z0-9-]+)/i);
@@ -47,14 +36,27 @@
     return m ? m[1] : "home";
   }
 
-  // ── Token counting ────────────────────────────────────────────────
+  // ── Context limit ──────────────────────────────────────────────
+  function getLimit() {
+    if (IS_CLAUDE) return TT.LIMITS["default"];
+    const btn = document.querySelector(
+      "[data-testid='model-switcher-dropdown-button'], button[aria-label*='GPT']"
+    );
+    const txt = btn ? btn.textContent.toLowerCase() : "";
+    if (txt.includes("o3"))  return TT.LIMITS["o3"];
+    if (txt.includes("o1"))  return TT.LIMITS["o1"];
+    if (txt.includes("4o"))  return TT.LIMITS["gpt-4o"];
+    if (txt.includes("3.5")) return TT.LIMITS["gpt-3.5"];
+    return TT.LIMITS["gpt-4o"];
+  }
+
+  // ── Token counting ─────────────────────────────────────────────
   function countTokens() {
-    if (IS_CLAUDE) return countClaude();
-    return countGPT();
+    return IS_CLAUDE ? countClaude() : countGPT();
   }
 
   function countClaude() {
-    // Conversation lives in largest text child of body (confirmed via diagnostic)
+    // Conversation lives in the largest text child of body (confirmed via diagnostic)
     let best = null, bestLen = 0;
     for (const el of document.body.children) {
       if (el.id === "tt-bar" || el.id === "tt-popup") continue;
@@ -63,47 +65,67 @@
     }
     if (!best || bestLen < 50) return 0;
 
+    // Subtract input box text to avoid counting half-typed messages
     const inputEl   = document.querySelector("div[contenteditable='true']");
     const inputText = inputEl ? (inputEl.textContent || "").trim() : "";
     let text        = (best.textContent || "").trim();
-    if (inputText && text.includes(inputText)) text = text.replace(inputText, "");
+    if (inputText && text.includes(inputText)) {
+      text = text.replace(inputText, "");
+    }
     return Tokenizer.estimate(text);
   }
 
   function countGPT() {
-    const selectors = ["article[data-testid]", "div[data-message-id]", "[data-testid^='conversation-turn']"];
+    const selectors = [
+      "article[data-testid]",
+      "div[data-message-id]",
+      "[data-testid^='conversation-turn']",
+    ];
     for (const sel of selectors) {
       try {
         const nodes = document.querySelectorAll(sel);
-        if (nodes.length > 0) return Tokenizer.estimateMessages(Array.from(nodes).map(n => n.textContent || ""));
+        if (nodes.length > 0) {
+          return Tokenizer.estimateMessages(
+            Array.from(nodes).map(n => n.textContent || "")
+          );
+        }
       } catch (_) {}
     }
     return 0;
   }
 
-  // ── Claude API fetch (content script has cookies) ─────────────────
+  // ── Claude API fetch ───────────────────────────────────────────
+  // Content script runs on claude.ai so it has cookie access
   async function fetchClaudeUsage() {
     try {
-      const orgsRes = await fetch(TT_CONSTANTS.CLAUDE_API.ORGANIZATIONS, { credentials: "include" });
+      const orgsRes = await fetch(TT.API.ORGS, { credentials: "include" });
       if (!orgsRes.ok) return null;
       const orgs    = await orgsRes.json();
-      const chatOrg = orgs.find(o => Array.isArray(o.capabilities) && o.capabilities.includes("chat"));
+      const chatOrg = orgs.find(
+        o => Array.isArray(o.capabilities) && o.capabilities.includes("chat")
+      );
       if (!chatOrg) return null;
 
-      const usageRes = await fetch(TT_CONSTANTS.CLAUDE_API.USAGE(chatOrg.uuid), { credentials: "include" });
+      const usageRes = await fetch(TT.API.USAGE(chatOrg.uuid), { credentials: "include" });
       if (!usageRes.ok) return null;
       const data = await usageRes.json();
 
       return {
-        five_hour: { utilization: data.five_hour?.utilization ?? 0, resets_at: data.five_hour?.resets_at ?? null },
-        seven_day: { utilization: data.seven_day?.utilization ?? 0, resets_at: data.seven_day?.resets_at ?? null },
+        five_hour: {
+          utilization: data.five_hour?.utilization ?? 0,
+          resets_at:   data.five_hour?.resets_at   ?? null,
+        },
+        seven_day: {
+          utilization: data.seven_day?.utilization ?? 0,
+          resets_at:   data.seven_day?.resets_at   ?? null,
+        },
       };
     } catch {
       return null;
     }
   }
 
-  // ── Session reset ─────────────────────────────────────────────────
+  // ── Session watcher ────────────────────────────────────────────
   function watchSession() {
     let lastUrl = location.href;
     setInterval(() => {
@@ -120,20 +142,22 @@
     window.addEventListener("popstate", () => setTimeout(scan, 800));
   }
 
-  // ── Scan ──────────────────────────────────────────────────────────
+  // ── Scan ───────────────────────────────────────────────────────
   function scan() {
     const tokens = countTokens();
     const limit  = getLimit();
     lastTokenCount = tokens;
     updateBar(tokens, limit);
 
-    // Report to service worker
-    chrome.runtime.sendMessage({
-      type:     "CONTEXT_UPDATE",
-      platform: PLATFORM,
-      used:     tokens,
-      limit,
-    });
+    // Report to service worker for storage + icon update
+    try {
+      chrome.runtime.sendMessage({
+        type:     "CONTEXT_UPDATE",
+        platform: PLATFORM,
+        used:     tokens,
+        limit,
+      });
+    } catch (_) {}
   }
 
   function scheduleScan() {
@@ -142,21 +166,24 @@
     requestAnimationFrame(() => { rafPending = false; scan(); });
   }
 
-  // ── MutationObserver ──────────────────────────────────────────────
+  // ── MutationObserver ───────────────────────────────────────────
   function startObserver() {
-    observer = new MutationObserver(muts => {
+    const obs = new MutationObserver(muts => {
       if (muts.some(m => m.addedNodes.length > 0)) scheduleScan();
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    obs.observe(document.body, { childList: true, subtree: true });
   }
 
-  // ── Bar injection ─────────────────────────────────────────────────
+  // ── Bar injection ──────────────────────────────────────────────
   function resolveWrapper() {
     const selectors = IS_CLAUDE
       ? ["fieldset", "div[contenteditable='true']"]
       : ["form:has(#prompt-textarea)", "form:has(textarea)", "div[class*='stretch']"];
     for (const sel of selectors) {
-      try { const el = document.querySelector(sel); if (el) return el; } catch (_) {}
+      try {
+        const el = document.querySelector(sel);
+        if (el) return el;
+      } catch (_) {}
     }
     return null;
   }
@@ -168,23 +195,24 @@
 
     const bar   = document.createElement("div");
     bar.id      = "tt-bar";
+
     const inner = document.createElement("div");
     inner.className = "tt-inner";
 
-    const label = document.createElement("span");
-    label.className = "tt-label";
+    const label       = document.createElement("span");
+    label.className   = "tt-label";
     label.textContent = "TOKENS";
 
-    const track = document.createElement("div");
+    const track     = document.createElement("div");
     track.className = "tt-track";
-    const fill  = document.createElement("div");
+    const fill      = document.createElement("div");
     fill.className  = "tt-fill";
     fill.id         = "tt-fill";
     track.appendChild(fill);
 
-    const count = document.createElement("span");
-    count.className = "tt-count";
-    count.id        = "tt-count";
+    const count       = document.createElement("span");
+    count.className   = "tt-count";
+    count.id          = "tt-count";
     count.textContent = "—";
 
     inner.append(label, track, count);
@@ -192,7 +220,10 @@
 
     const anchor = () => {
       const w = resolveWrapper();
-      if (w?.parentNode) { w.parentNode.insertBefore(bar, w); return true; }
+      if (w?.parentNode) {
+        w.parentNode.insertBefore(bar, w);
+        return true;
+      }
       return false;
     };
 
@@ -203,6 +234,7 @@
     }
   }
 
+  // ── Bar update ─────────────────────────────────────────────────
   function updateBar(used, limit) {
     const fill  = document.getElementById("tt-fill");
     const count = document.getElementById("tt-count");
@@ -210,40 +242,62 @@
 
     const pct       = Math.min((used / limit) * 100, 100);
     const remaining = Math.max(limit - used, 0);
-    const color     = pct >= 90 ? "tt-red" : pct >= 70 ? "tt-yellow" : "";
 
     fill.style.width = pct + "%";
-    fill.className   = "tt-fill" + (color ? " " + color : "");
-    count.textContent = formatK(remaining) + " left";
-    count.className   = "tt-count" + (color ? " " + color : "");
+    fill.className   = "tt-fill" +
+      (pct >= TT.DANGER ? " tt-red" : pct >= TT.WARN ? " tt-yellow" : "");
 
-    if (pct >= 100 && !popupShown) { popupShown = true; showPopup(limit); }
+    count.textContent = formatK(remaining) + " left";
+    count.className   = "tt-count" +
+      (pct >= TT.DANGER ? " tt-red" : pct >= TT.WARN ? " tt-yellow" : "");
+
+    if (pct >= 100 && !popupShown) {
+      popupShown = true;
+      showPopup(limit);
+    }
   }
 
-  function formatK(n) { return n >= 1000 ? (n/1000).toFixed(1)+"k" : String(n); }
+  function formatK(n) {
+    return n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
+  }
 
-  // ── Exhaustion popup ──────────────────────────────────────────────
+  // ── Exhaustion popup ───────────────────────────────────────────
   function showPopup(limit) {
     if (document.getElementById("tt-popup")) return;
-    const popup = document.createElement("div");
-    popup.id    = "tt-popup";
 
-    const box   = document.createElement("div");
-    box.className = "tt-popup-box";
-    box.innerHTML = `
-      <div class="tt-popup-icon">⚠</div>
-      <div class="tt-popup-title">Context Limit Reached</div>
-      <div class="tt-popup-body">This conversation has used ~${formatK(limit)} tokens — the full context window. The model may start losing earlier context.</div>
-      <div class="tt-popup-tip">Start a new chat to reset.</div>
-      <button class="tt-popup-btn" id="tt-popup-close">Got it</button>
-    `;
+    const popup     = document.createElement("div");
+    popup.id        = "tt-popup";
+    const box       = document.createElement("div");
+    box.className   = "tt-popup-box";
 
-    popup.appendChild(box);
-    document.body.appendChild(popup);
-    document.getElementById("tt-popup-close").onclick = () => {
+    const icon      = document.createElement("div");
+    icon.className  = "tt-popup-icon";
+    icon.textContent = "⚠";
+
+    const title       = document.createElement("div");
+    title.className   = "tt-popup-title";
+    title.textContent = "Context Limit Reached";
+
+    const body       = document.createElement("div");
+    body.className   = "tt-popup-body";
+    body.textContent = `This conversation has used ~${formatK(limit)} tokens — the full context window. The model may start losing earlier context.`;
+
+    const tip       = document.createElement("div");
+    tip.className   = "tt-popup-tip";
+    tip.textContent = "Start a new chat to reset.";
+
+    const btn       = document.createElement("button");
+    btn.className   = "tt-popup-btn";
+    btn.textContent = "Got it";
+    btn.addEventListener("click", () => {
       popup.style.opacity = "0";
       setTimeout(() => popup.remove(), 300);
-    };
+    });
+
+    box.append(icon, title, body, tip, btn);
+    popup.appendChild(box);
+    document.body.appendChild(popup);
+
     setTimeout(() => {
       if (document.getElementById("tt-popup")) {
         popup.style.opacity = "0";
@@ -252,11 +306,13 @@
     }, 12000);
   }
 
-  // ── Message listener ──────────────────────────────────────────────
+  // ── Message listener ───────────────────────────────────────────
   chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
     if (msg.type === "FETCH_CLAUDE_USAGE" && IS_CLAUDE) {
       fetchClaudeUsage().then(usage => {
-        chrome.runtime.sendMessage({ type: "CLAUDE_USAGE_RESULT", usage });
+        try {
+          chrome.runtime.sendMessage({ type: "CLAUDE_USAGE_RESULT", usage });
+        } catch (_) {}
       });
     }
     if (msg.type === "GET_CONTEXT_STATE") {
@@ -265,22 +321,30 @@
     return true;
   });
 
-  // ── Boot ──────────────────────────────────────────────────────────
+  // ── Boot ───────────────────────────────────────────────────────
   function init() {
     injectBar();
     startObserver();
     watchSession();
     setTimeout(scan, 800);
     setTimeout(scan, 2500);
-    // Claude: also trigger an API fetch immediately
+
+    // Claude: fetch real rate limit data immediately on page load
     if (IS_CLAUDE) {
       fetchClaudeUsage().then(usage => {
-        if (usage) chrome.runtime.sendMessage({ type: "CLAUDE_USAGE_RESULT", usage });
+        if (usage) {
+          try {
+            chrome.runtime.sendMessage({ type: "CLAUDE_USAGE_RESULT", usage });
+          } catch (_) {}
+        }
       });
     }
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
-  else init();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 
 })();
