@@ -136,6 +136,12 @@ function render({ usage, context, history, platform }) {
         ${rateRow("5-Hour Session", usage.five_hour?.utilization, usage.five_hour?.resets_at)}
         ${rateRow("7-Day Weekly",   usage.seven_day?.utilization, usage.seven_day?.resets_at)}
       </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Daily Usage History</div>
+      <div class="rate-card">
+        ${dailyHistory(history || [], platform)}
+      </div>
     </div>` : `
     <div class="section">
       <div class="section-title">Daily Usage History</div>
