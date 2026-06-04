@@ -46,7 +46,16 @@ function countdown(resetsAt) {
   return h > 0 ? `Resets in ${h}h ${m}m` : `Resets in ${m}m`;
 }
 
-// ── Rate limit row (Claude) ────────────────────────────────────────
+function dayLabel(dateStr) {
+  const today     = new Date().toDateString();
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  if (dateStr === today)     return "Today";
+  if (dateStr === yesterday) return "Yesterday";
+  // e.g. "Mon Jun 2"
+  return new Date(dateStr).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+// ── Rate limit row ─────────────────────────────────────────────────
 function rateRow(name, utilization, resetsAt) {
   const pct   = Math.min(utilization || 0, 100);
   const color = colorFor(pct);
@@ -66,28 +75,26 @@ function rateRow(name, utilization, resetsAt) {
     </div>`;
 }
 
-// ── Session history (ChatGPT) ──────────────────────────────────────
-function sessionHistory(history, platform) {
-  // Filter to this platform's sessions, last 5
-  const sessions = history
+// ── Daily history rows (ChatGPT) ───────────────────────────────────
+function dailyHistory(history, platform) {
+  // Get last 5 days for this platform, newest first
+  const days = history
     .filter(h => h.platform === platform)
-    .slice(-5)
-    .reverse();
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 5);
 
-  if (sessions.length === 0) {
-    return `<div class="no-history">No sessions recorded yet.<br>Start chatting to build history.</div>`;
+  if (days.length === 0) {
+    return `<div class="no-history">No usage recorded yet.<br>Data saves automatically as you chat.</div>`;
   }
 
-  return sessions.map((s, i) => {
-    const pct   = safePct(s.used, s.limit);
+  return days.map(d => {
+    const pct   = safePct(d.used, d.limit);
     const color = colorFor(pct);
-    const date  = new Date(s.ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    const label = i === 0 ? "Today" : date;
     return `
       <div class="rate-row">
         <div>
-          <div class="rate-name">${label}</div>
-          <div class="rate-reset">~${fk(s.used)} of ${fk(s.limit)} used</div>
+          <div class="rate-name">${dayLabel(d.date)}</div>
+          <div class="rate-reset">Peak ~${fk(d.used)} of ${fk(d.limit)} tokens</div>
         </div>
         <div class="rate-right">
           <span class="rate-pct ${colorClass(pct)}">${pct}%</span>
@@ -122,7 +129,6 @@ function render({ usage, context, history, platform }) {
   }
   const heroColor = colorFor(heroPct);
 
-  // Second section — rate limits for Claude, session history for ChatGPT
   const secondSection = isClaude && usage ? `
     <div class="section">
       <div class="section-title">Rate Limits</div>
@@ -132,9 +138,9 @@ function render({ usage, context, history, platform }) {
       </div>
     </div>` : `
     <div class="section">
-      <div class="section-title">Session History</div>
+      <div class="section-title">Daily Usage History</div>
       <div class="rate-card">
-        ${sessionHistory(history || [], platform)}
+        ${dailyHistory(history || [], platform)}
       </div>
     </div>`;
 
@@ -180,10 +186,8 @@ function render({ usage, context, history, platform }) {
     </div>
   `;
 
-  // Events
   document.getElementById("refresh-btn").addEventListener("click", () => {
-    const btn = document.getElementById("refresh-btn");
-    btn.classList.add("spin");
+    document.getElementById("refresh-btn").classList.add("spin");
     chrome.runtime.sendMessage({ type: "FORCE_REFRESH" });
     setTimeout(() => location.reload(), 1500);
   });
@@ -192,16 +196,7 @@ function render({ usage, context, history, platform }) {
     chrome.runtime.openOptionsPage();
   });
 
-  document.getElementById("new-chat-btn").addEventListener("click", async () => {
-    if (used > 50) {
-      const r = await chrome.storage.local.get([TT.KEY.HISTORY]);
-      const h   = r[TT.KEY.HISTORY] || [];
-      const key = platform + "_" + new Date().toDateString();
-      const idx = h.findIndex(x => x.key === key);
-      const rec = { used, limit, platform, key, ts: Date.now() };
-      if (idx >= 0) h[idx] = rec; else h.push(rec);
-      await chrome.storage.local.set({ [TT.KEY.HISTORY]: h.slice(-60) });
-    }
+  document.getElementById("new-chat-btn").addEventListener("click", () => {
     const url = isClaude ? "https://claude.ai/new" : "https://chatgpt.com/";
     chrome.tabs.update({ url });
     window.close();
@@ -249,17 +244,6 @@ async function init() {
     if (live?.used !== undefined) {
       data.context           = data.context || {};
       data.context[platform] = { used: live.used, limit: live.limit };
-
-      // Auto-save to history if meaningful
-      if (live.used > 50) {
-        const h   = data.history || [];
-        const key = platform + "_" + new Date().toDateString();
-        const idx = h.findIndex(x => x.key === key);
-        const rec = { used: live.used, limit: live.limit, platform, key, ts: Date.now() };
-        if (idx >= 0) h[idx] = rec; else h.push(rec);
-        data.history = h.slice(-60);
-        chrome.storage.local.set({ [TT.KEY.HISTORY]: data.history });
-      }
     }
   } catch (_) {}
 

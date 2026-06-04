@@ -8,6 +8,7 @@
  *  3. Inject token bar above input box
  *  4. Detect session resets and zero the counter
  *  5. Show exhaustion popup at 100%
+ *  6. Auto-save daily usage totals on every scan
  */
 
 (() => {
@@ -56,7 +57,6 @@
   }
 
   function countClaude() {
-    // Conversation lives in the largest text child of body (confirmed via diagnostic)
     let best = null, bestLen = 0;
     for (const el of document.body.children) {
       if (el.id === "tt-bar" || el.id === "tt-popup") continue;
@@ -65,7 +65,6 @@
     }
     if (!best || bestLen < 50) return 0;
 
-    // Subtract input box text to avoid counting half-typed messages
     const inputEl   = document.querySelector("div[contenteditable='true']");
     const inputText = inputEl ? (inputEl.textContent || "").trim() : "";
     let text        = (best.textContent || "").trim();
@@ -94,8 +93,41 @@
     return 0;
   }
 
+  // ── Auto-save daily usage ──────────────────────────────────────
+  // Called on every scan. Saves the PEAK token count seen today
+  // per platform. This way even if you never open the popup,
+  // your usage is recorded.
+  function saveDailyUsage(tokens, limit) {
+    if (tokens < 50) return; // ignore noise
+    const today = new Date().toDateString();
+    const key   = TT.KEY.HISTORY;
+
+    chrome.storage.local.get([key], (r) => {
+      const history = r[key] || [];
+      const recKey  = PLATFORM + "_" + today;
+      const idx     = history.findIndex(x => x.key === recKey);
+      const existing = idx >= 0 ? history[idx] : null;
+
+      // Only update if tokens increased — tracks peak usage of the day
+      if (existing && existing.used >= tokens) return;
+
+      const rec = {
+        key:      recKey,
+        platform: PLATFORM,
+        used:     tokens,
+        limit,
+        ts:       Date.now(),
+        date:     today,
+      };
+
+      if (idx >= 0) history[idx] = rec;
+      else history.push(rec);
+
+      chrome.storage.local.set({ [key]: history.slice(-60) });
+    });
+  }
+
   // ── Claude API fetch ───────────────────────────────────────────
-  // Content script runs on claude.ai so it has cookie access
   async function fetchClaudeUsage() {
     try {
       const orgsRes = await fetch(TT.API.ORGS, { credentials: "include" });
@@ -149,7 +181,10 @@
     lastTokenCount = tokens;
     updateBar(tokens, limit);
 
-    // Report to service worker for storage + icon update
+    // Auto-save daily peak usage — runs silently on every scan
+    saveDailyUsage(tokens, limit);
+
+    // Report to service worker
     try {
       chrome.runtime.sendMessage({
         type:     "CONTEXT_UPDATE",
@@ -265,30 +300,31 @@
   function showPopup(limit) {
     if (document.getElementById("tt-popup")) return;
 
-    const popup     = document.createElement("div");
-    popup.id        = "tt-popup";
-    const box       = document.createElement("div");
-    box.className   = "tt-popup-box";
+    const popup = document.createElement("div");
+    popup.id    = "tt-popup";
 
-    const icon      = document.createElement("div");
-    icon.className  = "tt-popup-icon";
-    icon.textContent = "⚠";
+    const box   = document.createElement("div");
+    box.className = "tt-popup-box";
+
+    const icon        = document.createElement("div");
+    icon.className    = "tt-popup-icon";
+    icon.textContent  = "⚠";
 
     const title       = document.createElement("div");
     title.className   = "tt-popup-title";
     title.textContent = "Context Limit Reached";
 
-    const body       = document.createElement("div");
-    body.className   = "tt-popup-body";
-    body.textContent = `This conversation has used ~${formatK(limit)} tokens — the full context window. The model may start losing earlier context.`;
+    const body        = document.createElement("div");
+    body.className    = "tt-popup-body";
+    body.textContent  = `This conversation has used ~${formatK(limit)} tokens — the full context window. The model may start losing earlier context.`;
 
-    const tip       = document.createElement("div");
-    tip.className   = "tt-popup-tip";
-    tip.textContent = "Start a new chat to reset.";
+    const tip         = document.createElement("div");
+    tip.className     = "tt-popup-tip";
+    tip.textContent   = "Start a new chat to reset.";
 
-    const btn       = document.createElement("button");
-    btn.className   = "tt-popup-btn";
-    btn.textContent = "Got it";
+    const btn         = document.createElement("button");
+    btn.className     = "tt-popup-btn";
+    btn.textContent   = "Got it";
     btn.addEventListener("click", () => {
       popup.style.opacity = "0";
       setTimeout(() => popup.remove(), 300);
@@ -329,7 +365,6 @@
     setTimeout(scan, 800);
     setTimeout(scan, 2500);
 
-    // Claude: fetch real rate limit data immediately on page load
     if (IS_CLAUDE) {
       fetchClaudeUsage().then(usage => {
         if (usage) {
