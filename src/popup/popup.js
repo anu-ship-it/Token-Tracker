@@ -51,59 +51,66 @@ function dayLabel(dateStr) {
   const yesterday = new Date(Date.now() - 86400000).toDateString();
   if (dateStr === today)     return "Today";
   if (dateStr === yesterday) return "Yesterday";
-  // e.g. "Mon Jun 2"
-  return new Date(dateStr).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  return new Date(dateStr).toLocaleDateString(undefined, {
+    weekday: "short", month: "short", day: "numeric"
+  });
 }
 
-// ── Rate limit row ─────────────────────────────────────────────────
-function rateRow(name, utilization, resetsAt) {
-  const pct   = Math.min(utilization || 0, 100);
+// ── Data row builder ───────────────────────────────────────────────
+function dataRow(name, sub, pct) {
   const color = colorFor(pct);
-  const reset = countdown(resetsAt);
   return `
-    <div class="rate-row">
-      <div>
-        <div class="rate-name">${name}</div>
-        <div class="rate-reset">${reset || "—"}</div>
+    <div class="data-row">
+      <div class="data-left">
+        <div class="data-name">${name}</div>
+        <div class="data-sub">${sub || "—"}</div>
       </div>
-      <div class="rate-right">
-        <span class="rate-pct ${colorClass(pct)}">${pct}%</span>
-        <div class="rate-mini-track">
-          <div class="rate-mini-fill" style="width:${pct}%;background:${color}"></div>
+      <div class="data-right">
+        <span class="data-pct ${colorClass(pct)}">${pct}%</span>
+        <div class="mini-track">
+          <div class="mini-fill" style="width:${pct}%;background:${color}"></div>
         </div>
       </div>
     </div>`;
 }
 
-// ── Daily history rows (ChatGPT) ───────────────────────────────────
-function dailyHistory(history, platform) {
-  // Get last 5 days for this platform, newest first
+// ── Rate limits (Claude) ───────────────────────────────────────────
+function rateLimitsHTML(usage) {
+  const fhPct = Math.min(usage.five_hour?.utilization || 0, 100);
+  const sdPct = Math.min(usage.seven_day?.utilization || 0, 100);
+  return `
+    <div class="section">
+      <div class="section-title">Rate Limits</div>
+      <div class="data-card">
+        ${dataRow("5-Hour Session", countdown(usage.five_hour?.resets_at), fhPct)}
+        ${dataRow("7-Day Weekly",   countdown(usage.seven_day?.resets_at), sdPct)}
+      </div>
+    </div>`;
+}
+
+// ── Daily history ──────────────────────────────────────────────────
+function dailyHistoryHTML(history, platform) {
   const days = history
     .filter(h => h.platform === platform)
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 5);
 
-  if (days.length === 0) {
-    return `<div class="no-history">No usage recorded yet.<br>Data saves automatically as you chat.</div>`;
-  }
+  const rows = days.length === 0
+    ? `<div class="no-history">No usage recorded yet.<br>Data saves automatically as you chat.</div>`
+    : days.map(d => {
+        const pct = safePct(d.used, d.limit);
+        return dataRow(
+          dayLabel(d.date),
+          `Peak ~${fk(d.used)} of ${fk(d.limit)} tokens`,
+          pct
+        );
+      }).join("");
 
-  return days.map(d => {
-    const pct   = safePct(d.used, d.limit);
-    const color = colorFor(pct);
-    return `
-      <div class="rate-row">
-        <div>
-          <div class="rate-name">${dayLabel(d.date)}</div>
-          <div class="rate-reset">Peak ~${fk(d.used)} of ${fk(d.limit)} tokens</div>
-        </div>
-        <div class="rate-right">
-          <span class="rate-pct ${colorClass(pct)}">${pct}%</span>
-          <div class="rate-mini-track">
-            <div class="rate-mini-fill" style="width:${pct}%;background:${color}"></div>
-          </div>
-        </div>
-      </div>`;
-  }).join("");
+  return `
+    <div class="section">
+      <div class="section-title">Daily Usage History</div>
+      <div class="data-card">${rows}</div>
+    </div>`;
 }
 
 // ── Render ─────────────────────────────────────────────────────────
@@ -121,71 +128,57 @@ function render({ usage, context, history, platform }) {
 
   let heroPct = ctxPct;
   if (isClaude && usage) {
-    heroPct = Math.max(
-      ctxPct,
-      usage.five_hour?.utilization || 0,
-      usage.seven_day?.utilization || 0
-    );
+    heroPct = Math.max(ctxPct, usage.five_hour?.utilization || 0, usage.seven_day?.utilization || 0);
   }
   const heroColor = colorFor(heroPct);
 
-  const secondSection = isClaude && usage ? `
-    <div class="section">
-      <div class="section-title">Rate Limits</div>
-      <div class="rate-card">
-        ${rateRow("5-Hour Session", usage.five_hour?.utilization, usage.five_hour?.resets_at)}
-        ${rateRow("7-Day Weekly",   usage.seven_day?.utilization, usage.seven_day?.resets_at)}
-      </div>
-    </div>
-    <div class="section">
-      <div class="section-title">Daily Usage History</div>
-      <div class="rate-card">
-        ${dailyHistory(history || [], platform)}
-      </div>
-    </div>` : `
-    <div class="section">
-      <div class="section-title">Daily Usage History</div>
-      <div class="rate-card">
-        ${dailyHistory(history || [], platform)}
-      </div>
-    </div>`;
-
   root.innerHTML = `
+
+    <!-- Header -->
     <div class="hd">
       <div class="hd-left">
         <div class="logo">T</div>
         <span class="app-name">Token Tracker</span>
       </div>
       <div class="hd-right">
-        <div class="dot" style="background:${heroColor};box-shadow:0 0 5px ${heroColor}55"></div>
+        <div class="dot" style="background:${heroColor};box-shadow:0 0 6px ${heroColor}66"></div>
         <span class="badge ${badgeClass}">${badgeLabel}</span>
         <button class="icon-btn" id="refresh-btn" title="Refresh">↻</button>
         <button class="icon-btn" id="settings-btn" title="Settings">⚙</button>
       </div>
     </div>
 
+    <!-- Context window -->
     <div class="section">
       <div class="section-title">Context Window</div>
-      <div class="ctx-row">
-        <span class="ctx-label">USED</span>
-        <span class="ctx-val ${colorClass(ctxPct)}">~${fk(used)}</span>
+      <div class="ctx-used-label">TOKENS USED</div>
+      <div class="ctx-hero">
+        <span class="ctx-used-val ${colorClass(ctxPct)}">~${fk(used)}</span>
+        <span style="font-size:11px;color:#333;padding-bottom:5px">${fk(limit)} limit</span>
       </div>
-      <div class="ctx-sub">
-        <span>~${fk(limit - used)} remaining</span>
-        <span>${fk(limit)} limit</span>
+      <div class="ctx-meta">
+        <span class="remaining">~${fk(Math.max(limit - used, 0))} remaining</span>
+        <span>${ctxPct}% used</span>
       </div>
-      <div class="bar-track">
-        <div class="bar-fill" style="width:${ctxPct}%;background:${ctxColor}"></div>
-      </div>
-      <div class="bar-labels">
-        <span>0</span>
-        <span class="bar-status ${colorClass(ctxPct)}">${statusLabel(ctxPct)}</span>
-        <span>${fk(limit)}</span>
+      <div class="bar-wrap">
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${ctxPct}%;background:${ctxColor}"></div>
+        </div>
+        <div class="bar-footer">
+          <span class="bar-end">0</span>
+          <span class="bar-status ${colorClass(ctxPct)}">${statusLabel(ctxPct)}</span>
+          <span class="bar-end">${fk(limit)}</span>
+        </div>
       </div>
     </div>
 
-    ${secondSection}
+    <!-- Rate limits (Claude only) -->
+    ${isClaude && usage ? rateLimitsHTML(usage) : ""}
 
+    <!-- Daily history (both platforms) -->
+    ${dailyHistoryHTML(history || [], platform)}
+
+    <!-- Footer -->
     <div class="footer">
       <span class="footer-note">chars ÷ 4 · ±8% · v2.0.0</span>
       <button class="new-chat" id="new-chat-btn">+ New chat</button>
@@ -244,7 +237,6 @@ async function init() {
   const platform = url.includes("claude.ai") ? "claude" : "chatgpt";
   const data     = await chrome.runtime.sendMessage({ type: "GET_ALL_DATA" });
 
-  // Get live context from content script
   try {
     const live = await chrome.tabs.sendMessage(tab.id, { type: "GET_CONTEXT_STATE" });
     if (live?.used !== undefined) {
