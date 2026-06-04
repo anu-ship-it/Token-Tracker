@@ -175,3 +175,48 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 .green  { color: #22c55e; }
 .yellow { color: #f59e0b; }
 .red    { color: #ef4444; }
+
+/* ── Toggle ───────────────────────────────────── */
+.toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.track {
+  position: absolute; inset: 0;
+  background: #1e1e1e; border-radius: 11px;
+  cursor: pointer; transition: background .2s;
+  border: 1px solid #2a2a2a;
+}
+.track::after {
+  content: ""; position: absolute;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #3a3a3a; top: 2px; left: 2px;
+  transition: transform .2s, background .2s;
+}
+.toggle input:checked + .track { background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.3); }
+.toggle input:checked + .track::after { transform: translateX(18px); background: #22c55e; }
+
+/* ── Select ───────────────────────────────────── */
+.sel {
+  background: #141414; color: #666;
+  border: 1px solid #1e1e1e; border-radius: 7px;
+  padding: 5px 9px; font-size: 11px;
+  font-family: inherit; cursor: pointer;
+  outline: none; flex-shrink: 0;
+}
+
+/* ── Save button ──────────────────────────────── */
+.save-btn {
+  width: 100%; padding: 12px;
+  background: #22c55e; color: #000;
+  border: none; border-radius: 9px;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: opacity .15s;
+}
+.save-btn:hover  { opacity: .85; }
+.save-btn:active { transform: scale(.98); }
+
+.saved-msg {
+  text-align: center; font-size: 11px;
+  color: #22c55e; margin-top: 8px;
+  height: 16px; transition: opacity .3s;
+}

@@ -56,7 +56,6 @@ function dayLabel(dateStr) {
   });
 }
 
-// ── Data row builder ───────────────────────────────────────────────
 function dataRow(name, sub, pct) {
   const color = colorFor(pct);
   return `
@@ -74,7 +73,6 @@ function dataRow(name, sub, pct) {
     </div>`;
 }
 
-// ── Rate limits (Claude) ───────────────────────────────────────────
 function rateLimitsHTML(usage) {
   const fhPct = Math.min(usage.five_hour?.utilization || 0, 100);
   const sdPct = Math.min(usage.seven_day?.utilization || 0, 100);
@@ -88,7 +86,6 @@ function rateLimitsHTML(usage) {
     </div>`;
 }
 
-// ── Daily history ──────────────────────────────────────────────────
 function dailyHistoryHTML(history, platform) {
   const days = history
     .filter(h => h.platform === platform)
@@ -97,14 +94,11 @@ function dailyHistoryHTML(history, platform) {
 
   const rows = days.length === 0
     ? `<div class="no-history">No usage recorded yet.<br>Data saves automatically as you chat.</div>`
-    : days.map(d => {
-        const pct = safePct(d.used, d.limit);
-        return dataRow(
-          dayLabel(d.date),
-          `Peak ~${fk(d.used)} of ${fk(d.limit)} tokens`,
-          pct
-        );
-      }).join("");
+    : days.map(d => dataRow(
+        dayLabel(d.date),
+        `Peak ~${fk(d.used)} of ${fk(d.limit)} tokens`,
+        safePct(d.used, d.limit)
+      )).join("");
 
   return `
     <div class="section">
@@ -113,8 +107,9 @@ function dailyHistoryHTML(history, platform) {
     </div>`;
 }
 
-// ── Render ─────────────────────────────────────────────────────────
-function render({ usage, context, history, platform }) {
+// ── Main view ──────────────────────────────────────────────────────
+function renderMain(state) {
+  const { usage, context, history, platform } = state;
   const root     = document.getElementById("root");
   const isClaude = platform === "claude";
   const ctx      = context?.[platform] || {};
@@ -133,8 +128,6 @@ function render({ usage, context, history, platform }) {
   const heroColor = colorFor(heroPct);
 
   root.innerHTML = `
-
-    <!-- Header -->
     <div class="hd">
       <div class="hd-left">
         <div class="logo">T</div>
@@ -148,7 +141,6 @@ function render({ usage, context, history, platform }) {
       </div>
     </div>
 
-    <!-- Context window -->
     <div class="section">
       <div class="section-title">Context Window</div>
       <div class="ctx-used-label">TOKENS USED</div>
@@ -172,13 +164,9 @@ function render({ usage, context, history, platform }) {
       </div>
     </div>
 
-    <!-- Rate limits (Claude only) -->
     ${isClaude && usage ? rateLimitsHTML(usage) : ""}
-
-    <!-- Daily history (both platforms) -->
     ${dailyHistoryHTML(history || [], platform)}
 
-    <!-- Footer -->
     <div class="footer">
       <span class="footer-note">chars ÷ 4 · ±8% · v2.0.0</span>
       <button class="new-chat" id="new-chat-btn">+ New chat</button>
@@ -192,16 +180,107 @@ function render({ usage, context, history, platform }) {
   });
 
   document.getElementById("settings-btn").addEventListener("click", () => {
-    chrome.runtime.openOptionsPage();
+    renderSettings(state);
   });
 
   document.getElementById("new-chat-btn").addEventListener("click", () => {
-    const url = isClaude ? "https://claude.ai/new" : "https://chatgpt.com/";
-    chrome.tabs.update({ url });
+    chrome.tabs.update({ url: isClaude ? "https://claude.ai/new" : "https://chatgpt.com/" });
     window.close();
   });
 }
 
+// ── Settings view ──────────────────────────────────────────────────
+function renderSettings(state) {
+  const root = document.getElementById("root");
+
+  // Load current settings
+  chrome.storage.local.get([TT.KEY.SETTINGS], (r) => {
+    const s = { ...TT.DEFAULTS, ...(r[TT.KEY.SETTINGS] || {}) };
+
+    root.innerHTML = `
+      <div class="hd">
+        <div class="hd-left">
+          <button class="icon-btn" id="back-btn" style="font-size:13px;color:#555">←</button>
+          <span class="app-name">Settings</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Notifications</div>
+        <div class="data-card">
+          ${toggleRow("n70",  "Alert at 70%",  "Early warning",    s.notify_70)}
+          ${toggleRow("n90",  "Alert at 90%",  "Critical warning", s.notify_90)}
+          ${toggleRow("n100", "Alert at 100%", "Limit reached",    s.notify_100)}
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Display</div>
+        <div class="data-card">
+          ${toggleRow("show_bar", "In-page token bar", "Show bar above input box", s.show_bar)}
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Refresh Interval</div>
+        <div class="data-card">
+          <div class="data-row">
+            <div class="data-left">
+              <div class="data-name">Fetch Claude usage every</div>
+              <div class="data-sub">Background refresh frequency</div>
+            </div>
+            <select id="refresh" class="sel">
+              <option value="1"  ${s.refresh_minutes === 1  ? "selected" : ""}>1 min</option>
+              <option value="2"  ${s.refresh_minutes === 2  ? "selected" : ""}>2 min</option>
+              <option value="5"  ${s.refresh_minutes === 5  ? "selected" : ""}>5 min</option>
+              <option value="10" ${s.refresh_minutes === 10 ? "selected" : ""}>10 min</option>
+              <option value="15" ${s.refresh_minutes === 15 ? "selected" : ""}>15 min</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:4px 14px 14px">
+        <button class="save-btn" id="save-btn">Save Settings</button>
+        <div class="saved-msg" id="saved-msg" style="opacity:0">✓ Settings saved</div>
+      </div>
+    `;
+
+    document.getElementById("back-btn").addEventListener("click", () => renderMain(state));
+
+    document.getElementById("save-btn").addEventListener("click", async () => {
+      const settings = {
+        notify_70:       document.getElementById("n70").checked,
+        notify_90:       document.getElementById("n90").checked,
+        notify_100:      document.getElementById("n100").checked,
+        show_bar:        document.getElementById("show_bar").checked,
+        refresh_minutes: parseInt(document.getElementById("refresh").value, 10),
+      };
+
+      await chrome.runtime.sendMessage({ type: "SAVE_SETTINGS", settings });
+
+      const msg = document.getElementById("saved-msg");
+      msg.style.opacity = "1";
+      setTimeout(() => { msg.style.opacity = "0"; }, 2000);
+    });
+  });
+}
+
+function toggleRow(id, label, desc, checked) {
+  return `
+    <div class="data-row">
+      <div class="data-left">
+        <div class="data-name">${label}</div>
+        <div class="data-sub">${desc}</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="${id}" ${checked ? "checked" : ""}>
+        <div class="track"></div>
+      </label>
+    </div>`;
+}
+
+// ── Empty state ────────────────────────────────────────────────────
 function renderEmpty() {
   document.getElementById("root").innerHTML = `
     <div class="hd">
@@ -245,7 +324,7 @@ async function init() {
     }
   } catch (_) {}
 
-  render({
+  renderMain({
     usage:    data.usage,
     context:  data.context || {},
     history:  data.history || [],
