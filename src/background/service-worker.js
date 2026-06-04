@@ -1,10 +1,5 @@
 /**
  * service-worker.js
- * Responsibilities:
- *  1. On install: set up alarm, open welcome page
- *  2. On alarm: tell content script to fetch Claude usage
- *  3. Store usage data and fire notifications
- *  4. Respond to popup data requests
  */
 
 importScripts(
@@ -28,7 +23,7 @@ async function setupAlarm() {
   await chrome.alarms.clearAll();
   chrome.alarms.create(TT.ALARM, {
     periodInMinutes: mins,
-    delayInMinutes: 0.1,
+    delayInMinutes:  0.1,
   });
 }
 
@@ -39,7 +34,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 function triggerUsageFetch() {
-  // Delegate to content script — it has cookie access for the API call
   chrome.tabs.query({ url: "https://claude.ai/*" }, (tabs) => {
     if (tabs.length > 0) {
       chrome.tabs.sendMessage(tabs[0].id, { type: "FETCH_CLAUDE_USAGE" });
@@ -61,10 +55,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
 
       case "CONTEXT_UPDATE": {
-        await Storage.saveContext(msg.platform, {
-          used:  msg.used,
-          limit: msg.limit,
-        });
+        await Storage.saveContext(msg.platform, { used: msg.used, limit: msg.limit });
+        await checkContextNotifications(msg.platform, msg.used, msg.limit);
         sendResponse({ ok: true });
         break;
       }
@@ -97,12 +89,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
-// ── Notifications ──────────────────────────────────────────────────
+// ── Notification helper ────────────────────────────────────────────
+function notify(id, title, message) {
+  chrome.notifications.create(id, {
+    type:    "basic",
+    title:    "Test",
+    message:   "Notifications working",
+    iconUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+  });
+}
+
+// ── Claude rate limit notifications ───────────────────────────────
 async function checkNotifications(usage) {
   const settings     = await Storage.getSettings();
   const lastNotified = await Storage.getLastNotified();
   const now          = Date.now();
-  const COOLDOWN     = 30 * 60 * 1000; // 30 min per threshold
+  const COOLDOWN     = 30 * 60 * 1000;
 
   const highestPct = Math.max(
     usage.five_hour?.utilization || 0,
@@ -110,21 +112,10 @@ async function checkNotifications(usage) {
   );
 
   const checks = [
-    {
-      key: "100", threshold: 100, enabled: settings.notify_100,
-      title: "Token limit reached",
-      body:  "You've hit your Claude usage limit.",
-    },
-    {
-      key: "90", threshold: 90, enabled: settings.notify_90,
-      title: "Approaching limit — 90%",
-      body:  "Claude usage is at 90%. Consider starting a new session soon.",
-    },
-    {
-      key: "70", threshold: 70, enabled: settings.notify_70,
-      title: "Token usage at 70%",
-      body:  "Claude usage is at 70%.",
-    },
+    { key: "100", threshold: 100, enabled: settings.notify_100, title: "Token limit reached",      body: "You've hit your Claude usage limit." },
+    { key: "90",  threshold: 90,  enabled: settings.notify_90,  title: "Approaching limit — 90%",  body: "Claude usage is at 90%. Consider a new session." },
+    { key: "75",  threshold: 75,  enabled: settings.notify_75,  title: "Token usage at 75%",       body: "Claude usage is at 75%." },
+    { key: "50",  threshold: 50,  enabled: settings.notify_50,  title: "Halfway through — 50%",    body: "Claude usage is at 50%." },
   ];
 
   for (const check of checks) {
@@ -132,15 +123,38 @@ async function checkNotifications(usage) {
     if (highestPct < check.threshold) continue;
     if (lastNotified[check.key] && now - lastNotified[check.key] < COOLDOWN) continue;
 
-    chrome.notifications.create(`tt_${check.key}`, {
-      type:    "basic",
-      iconUrl: chrome.runtime.getURL("icons/icon48.png"),
-      title:   check.title,
-      message: check.body,
-    });
-
+    notify(`tt_rate_${check.key}`, check.title, check.body);
     lastNotified[check.key] = now;
     await Storage.saveLastNotified(lastNotified);
-    break; // Only fire the highest applicable level
+    break;
+  }
+}
+
+// ── Context window notifications (both platforms) ─────────────────
+async function checkContextNotifications(platform, used, limit) {
+  if (!used || !limit) return;
+  const settings     = await Storage.getSettings();
+  const lastNotified = await Storage.getLastNotified();
+  const now          = Date.now();
+  const COOLDOWN     = 30 * 60 * 1000;
+  const pct          = Math.round((used / limit) * 100);
+  const name         = platform === "claude" ? "Claude" : "ChatGPT";
+
+  const checks = [
+    { key: `ctx_${platform}_100`, threshold: 100, enabled: settings.notify_100, title: `${name} context full`,       body: "Context window is full. Start a new chat." },
+    { key: `ctx_${platform}_90`,  threshold: 90,  enabled: settings.notify_90,  title: `${name} context at 90%`,    body: `${name} context window is 90% full.` },
+    { key: `ctx_${platform}_75`,  threshold: 75,  enabled: settings.notify_75,  title: `${name} context at 75%`,    body: `${name} context window is 75% full.` },
+    { key: `ctx_${platform}_50`,  threshold: 50,  enabled: settings.notify_50,  title: `${name} context at 50%`,    body: `${name} context window is halfway full.` },
+  ];
+
+  for (const check of checks) {
+    if (!check.enabled) continue;
+    if (pct < check.threshold) continue;
+    if (lastNotified[check.key] && now - lastNotified[check.key] < COOLDOWN) continue;
+
+    notify(check.key, check.title, check.body);
+    lastNotified[check.key] = now;
+    await Storage.saveLastNotified(lastNotified);
+    break;
   }
 }
