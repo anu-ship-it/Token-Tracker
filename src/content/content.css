@@ -34,7 +34,7 @@
 .tt-fill {
   height: 100%;
   width: 0%;
-  background: #22c55e;
+  background: #06b6d4;
   border-radius: 2px;
   transition: width 0.4s ease, background 0.3s;
 }
