@@ -4,7 +4,7 @@ html, body {
   width: 300px;
   min-width: 300px;
   max-width: 300px;
-  background: #080808;
+  background: #021c1e;
   color: #f0f0f0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -19,7 +19,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   display: flex; align-items: center;
   justify-content: space-between;
   padding: 13px 14px 12px;
-  border-bottom: 1px solid #131313;
+  border-bottom: 1px solid #0a2e32;
 }
 .hd-left  { display: flex; align-items: center; gap: 9px; }
 .hd-right { display: flex; align-items: center; gap: 7px; }
@@ -58,7 +58,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 /* ── Section ──────────────────────────────────── */
 .section {
   padding: 14px 14px 12px;
-  border-bottom: 1px solid #0f0f0f;
+  border-bottom: 1px solid #0a2e32;
 }
 .section-title {
   font-size: 9px; font-weight: 700;
@@ -110,8 +110,8 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 
 /* ── Rate / History card ──────────────────────── */
 .data-card {
-  background: #0d0d0d;
-  border: 1px solid #161616;
+  background: #031e21;
+  border: 1px solid #0d3d42;
   border-radius: 10px;
   overflow: hidden;
 }
@@ -120,7 +120,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   justify-content: space-between;
   padding: 11px 13px;
 }
-.data-row + .data-row { border-top: 1px solid #131313; }
+.data-row + .data-row { border-top: 1px solid #0a2e32; }
 .data-left { display: flex; flex-direction: column; gap: 3px; }
 .data-name  { font-size: 12px; font-weight: 600; color: #888; }
 .data-sub   { font-size: 10px; color: #2e2e2e; }
