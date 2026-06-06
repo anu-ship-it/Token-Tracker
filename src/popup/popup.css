@@ -38,7 +38,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   padding: 3px 9px; border-radius: 20px;
   letter-spacing: .03em;
 }
-.badge-claude  { background: rgba(232,137,74,.15); color: #e8894a; }
+.badge-claude  { background: rgba(6,182,212,.12); color: #06b6d4; }
 .badge-chatgpt { background: rgba(25,195,125,.15);  color: #19c37d; }
 .badge-none    { background: rgba(255,255,255,.06);  color: #444; }
 
@@ -135,7 +135,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   background: #1a1a1a; border-radius: 2px;
   overflow: hidden;
 }
-.mini-fill { height: 100%; border-radius: 2px; transition: width .5s ease; }
+.mini-fill { height: 100%; border-radius: 2px; transition: width .5s ease; min-width: 3px; }
 
 /* ── No history ───────────────────────────────── */
 .no-history {

@@ -208,7 +208,7 @@ function renderSettings(state) {
     root.innerHTML = `
       <div class="hd">
         <div class="hd-left">
-          <button class="icon-btn" id="back-btn" style="font-size:13px;color:#555">←</button>
+          <button class="icon-btn" id="back-btn" style="font-size:13px;color:#2a6b72">←</button>
           <span class="app-name">Settings</span>
         </div>
       </div>
