@@ -13,27 +13,27 @@ function safePct(used, limit) {
   if (!limit || used === undefined) return 0;
   const raw = (used / limit) * 100;
   if (raw <= 0) return 0;
-  if (raw < 1)  return 1;
+  if (raw < 1) return 1;
   return Math.min(Math.round(raw), 100);
 }
 
 function colorFor(pct) {
   if (pct >= TT.DANGER) return TT.COLOR.RED;
-  if (pct >= TT.WARN)   return TT.COLOR.YELLOW;
+  if (pct >= TT.WARN) return TT.COLOR.YELLOW;
   return TT.COLOR.GREEN;
 }
 
 function colorClass(pct) {
   if (pct >= TT.DANGER) return "red";
-  if (pct >= TT.WARN)   return "yellow";
+  if (pct >= TT.WARN) return "yellow";
   return "green";
 }
 
 function statusLabel(pct) {
-  if (pct >= 100)       return "MAXED OUT";
+  if (pct >= 100) return "MAXED OUT";
   if (pct >= TT.DANGER) return "CRITICAL";
-  if (pct >= TT.WARN)   return "WARNING";
-  if (pct >= 1)         return "HEALTHY";
+  if (pct >= TT.WARN) return "WARNING";
+  if (pct >= 1) return "HEALTHY";
   return "IDLE";
 }
 
@@ -47,9 +47,9 @@ function countdown(resetsAt) {
 }
 
 function dayLabel(dateStr) {
-  const today     = new Date().toDateString();
+  const today = new Date().toDateString();
   const yesterday = new Date(Date.now() - 86400000).toDateString();
-  if (dateStr === today)     return "Today";
+  if (dateStr === today) return "Today";
   if (dateStr === yesterday) return "Yesterday";
   return new Date(dateStr).toLocaleDateString(undefined, {
     weekday: "short", month: "short", day: "numeric"
@@ -81,7 +81,7 @@ function rateLimitsHTML(usage) {
       <div class="section-title">Rate Limits</div>
       <div class="data-card">
         ${dataRow("5-Hour Session", countdown(usage.five_hour?.resets_at), fhPct)}
-        ${dataRow("7-Day Weekly",   countdown(usage.seven_day?.resets_at), sdPct)}
+        ${dataRow("7-Day Weekly", countdown(usage.seven_day?.resets_at), sdPct)}
       </div>
     </div>`;
 }
@@ -95,10 +95,10 @@ function dailyHistoryHTML(history, platform) {
   const rows = days.length === 0
     ? `<div class="no-history">No usage recorded yet.<br>Data saves automatically as you chat.</div>`
     : days.map(d => dataRow(
-        dayLabel(d.date),
-        `Peak ~${fk(d.used)} of ${fk(d.limit)} tokens`,
-        safePct(d.used, d.limit)
-      )).join("");
+      dayLabel(d.date),
+      `Peak ~${fk(d.used)} of ${fk(d.limit)} tokens`,
+      safePct(d.used, d.limit)
+    )).join("");
 
   return `
     <div class="section">
@@ -110,12 +110,12 @@ function dailyHistoryHTML(history, platform) {
 // ── Main view ──────────────────────────────────────────────────────
 function renderMain(state) {
   const { usage, context, history, platform } = state;
-  const root     = document.getElementById("root");
+  const root = document.getElementById("root");
   const isClaude = platform === "claude";
-  const ctx      = context?.[platform] || {};
-  const used     = ctx.used  || 0;
-  const limit    = ctx.limit || (isClaude ? TT.LIMITS["default"] : TT.LIMITS["gpt-4o"]);
-  const ctxPct   = safePct(used, limit);
+  const ctx = context?.[platform] || {};
+  const used = ctx.used || 0;
+  const limit = ctx.limit || (isClaude ? TT.LIMITS["default"] : TT.LIMITS["gpt-4o"]);
+  const ctxPct = safePct(used, limit);
   const ctxColor = colorFor(ctxPct);
 
   const badgeClass = isClaude ? "badge-claude" : platform === "chatgpt" ? "badge-chatgpt" : "badge-none";
@@ -130,7 +130,15 @@ function renderMain(state) {
   root.innerHTML = `
     <div class="hd">
       <div class="hd-left">
-        <div class="logo"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#0d3d42" stroke-width="1.5"/><path d="M7 1.5 a5.5 5.5 0 0 1 4.76 2.75" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round"/><circle cx="7" cy="7" r="3.2" stroke="#0d3d42" stroke-width="1.2"/><path d="M7 3.8 a3.2 3.2 0 0 1 2.77 1.6 a3.2 3.2 0 0 1 0 3.2" stroke="#67e8f9" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+        <div class="logo">
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <circle cx="9" cy="9" r="7" stroke="#0d3d42" stroke-width="2"/>
+    <path d="M9 2 a7 7 0 0 1 6.06 3.5" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="9" cy="9" r="4" stroke="#0d3d42" stroke-width="1.5"/>
+    <path d="M9 5 a4 4 0 0 1 3.46 2 a4 4 0 0 1 0 4" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="9" y="12.5" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="7" font-weight="800" fill="white">T</text>
+  </svg>
+</div>
         <span class="app-name">Token Tracker</span>
       </div>
       <div class="hd-right">
@@ -208,10 +216,10 @@ function renderSettings(state) {
       <div class="section">
         <div class="section-title">Notifications</div>
         <div class="data-card">
-          ${toggleRow("n50",  "Alert at 50%",  "Early warning",    s.notify_50)}
-          ${toggleRow("n75",  "Alert at 75%",  "Early warning",    s.notify_75)}
-          ${toggleRow("n90",  "Alert at 90%",  "Critical warning", s.notify_90)}
-          ${toggleRow("n100", "Alert at 100%", "Limit reached",    s.notify_100)}
+          ${toggleRow("n50", "Alert at 50%", "Early warning", s.notify_50)}
+          ${toggleRow("n75", "Alert at 75%", "Early warning", s.notify_75)}
+          ${toggleRow("n90", "Alert at 90%", "Critical warning", s.notify_90)}
+          ${toggleRow("n100", "Alert at 100%", "Limit reached", s.notify_100)}
         </div>
       </div>
 
@@ -231,9 +239,9 @@ function renderSettings(state) {
               <div class="data-sub">Background refresh frequency</div>
             </div>
             <select id="refresh" class="sel">
-              <option value="1"  ${s.refresh_minutes === 1  ? "selected" : ""}>1 min</option>
-              <option value="2"  ${s.refresh_minutes === 2  ? "selected" : ""}>2 min</option>
-              <option value="5"  ${s.refresh_minutes === 5  ? "selected" : ""}>5 min</option>
+              <option value="1"  ${s.refresh_minutes === 1 ? "selected" : ""}>1 min</option>
+              <option value="2"  ${s.refresh_minutes === 2 ? "selected" : ""}>2 min</option>
+              <option value="5"  ${s.refresh_minutes === 5 ? "selected" : ""}>5 min</option>
               <option value="10" ${s.refresh_minutes === 10 ? "selected" : ""}>10 min</option>
               <option value="15" ${s.refresh_minutes === 15 ? "selected" : ""}>15 min</option>
             </select>
@@ -251,11 +259,11 @@ function renderSettings(state) {
 
     document.getElementById("save-btn").addEventListener("click", async () => {
       const settings = {
-        notify_50:  document.getElementById("n50").checked,
-        notify_75:  document.getElementById("n75").checked,
-        notify_90:  document.getElementById("n90").checked,
+        notify_50: document.getElementById("n50").checked,
+        notify_75: document.getElementById("n75").checked,
+        notify_90: document.getElementById("n90").checked,
         notify_100: document.getElementById("n100").checked,
-        show_bar:   document.getElementById("show_bar").checked,
+        show_bar: document.getElementById("show_bar").checked,
         refresh_minutes: parseInt(document.getElementById("refresh").value, 10),
       };
 
@@ -287,7 +295,16 @@ function renderEmpty() {
   document.getElementById("root").innerHTML = `
     <div class="hd">
       <div class="hd-left">
-        <div class="logo"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#0d3d42" stroke-width="1.5"/><path d="M7 1.5 a5.5 5.5 0 0 1 4.76 2.75" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round"/><circle cx="7" cy="7" r="3.2" stroke="#0d3d42" stroke-width="1.2"/><path d="M7 3.8 a3.2 3.2 0 0 1 2.77 1.6 a3.2 3.2 0 0 1 0 3.2" stroke="#67e8f9" stroke-width="1.2" stroke-linecap="round"/></svg></div>
+       fill="none"><circle cx="7" cy="7" r="5.5" stroke="#0d3d42" s 
+       <div class="logo">
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+    <circle cx="9" cy="9" r="7" stroke="#0d3d42" stroke-width="2"/>
+    <path d="M9 2 a7 7 0 0 1 6.06 3.5" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="9" cy="9" r="4" stroke="#0d3d42" stroke-width="1.5"/>
+    <path d="M9 5 a4 4 0 0 1 3.46 2 a4 4 0 0 1 0 4" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="9" y="12.5" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="7" font-weight="800" fill="white">T</text>
+  </svg>
+</div>
         <span class="app-name">Token Tracker</span>
       </div>
       <div class="hd-right">
@@ -310,26 +327,26 @@ function renderEmpty() {
 // ── Init ───────────────────────────────────────────────────────────
 async function init() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const url   = tab?.url || "";
-  const ok    = SUPPORTED.some(s => url.includes(s));
+  const url = tab?.url || "";
+  const ok = SUPPORTED.some(s => url.includes(s));
 
   if (!ok) { renderEmpty(); return; }
 
   const platform = url.includes("claude.ai") ? "claude" : "chatgpt";
-  const data     = await chrome.runtime.sendMessage({ type: "GET_ALL_DATA" });
+  const data = await chrome.runtime.sendMessage({ type: "GET_ALL_DATA" });
 
   try {
     const live = await chrome.tabs.sendMessage(tab.id, { type: "GET_CONTEXT_STATE" });
     if (live?.used !== undefined) {
-      data.context           = data.context || {};
+      data.context = data.context || {};
       data.context[platform] = { used: live.used, limit: live.limit };
     }
-  } catch (_) {}
+  } catch (_) { }
 
   renderMain({
-    usage:    data.usage,
-    context:  data.context || {},
-    history:  data.history || [],
+    usage: data.usage,
+    context: data.context || {},
+    history: data.history || [],
     platform,
   });
 }
