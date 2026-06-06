@@ -130,7 +130,7 @@ function renderMain(state) {
   root.innerHTML = `
     <div class="hd">
       <div class="hd-left">
-        <div class="logo">T</div>
+        <div class="logo"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#0d3d42" stroke-width="1.5"/><path d="M7 1.5 a5.5 5.5 0 0 1 4.76 2.75" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round"/><circle cx="7" cy="7" r="3.2" stroke="#0d3d42" stroke-width="1.2"/><path d="M7 3.8 a3.2 3.2 0 0 1 2.77 1.6 a3.2 3.2 0 0 1 0 3.2" stroke="#67e8f9" stroke-width="1.2" stroke-linecap="round"/></svg></div>
         <span class="app-name">Token Tracker</span>
       </div>
       <div class="hd-right">
@@ -287,7 +287,7 @@ function renderEmpty() {
   document.getElementById("root").innerHTML = `
     <div class="hd">
       <div class="hd-left">
-        <div class="logo">T</div>
+        <div class="logo"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#0d3d42" stroke-width="1.5"/><path d="M7 1.5 a5.5 5.5 0 0 1 4.76 2.75" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round"/><circle cx="7" cy="7" r="3.2" stroke="#0d3d42" stroke-width="1.2"/><path d="M7 3.8 a3.2 3.2 0 0 1 2.77 1.6 a3.2 3.2 0 0 1 0 3.2" stroke="#67e8f9" stroke-width="1.2" stroke-linecap="round"/></svg></div>
         <span class="app-name">Token Tracker</span>
       </div>
       <div class="hd-right">
