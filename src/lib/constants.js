@@ -17,7 +17,7 @@ const TT = {
   WARN:   70,
   DANGER: 90,
   COLOR: {
-    GREEN:  "#22c55e",
+    GREEN:  "#06b6d4",
     YELLOW: "#f59e0b",
     RED:    "#ef4444",
   },
