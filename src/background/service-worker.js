@@ -94,7 +94,7 @@ function notify(id, title, message, priority) {
   chrome.notifications.create(id, {
     type:     "basic",
     iconUrl:  ICON,
-    title:    `Token Tracker — ${title}`,
+    title:    `TokenPulse — ${title}`,
     message,
     priority: priority || 1,
   });
