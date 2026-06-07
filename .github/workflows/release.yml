@@ -16,11 +16,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Zip extension
-        run: cd src && zip -r ../token-tracker-${{ github.ref_name }}.zip . -x "*.DS_Store"
+        run: cd src && zip -r ../tokenPulse-${{ github.ref_name }}.zip . -x "*.DS_Store"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: token-tracker-*.zip
+          files: tokenPulse-*.zip
