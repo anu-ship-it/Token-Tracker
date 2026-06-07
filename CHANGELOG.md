@@ -1,24 +1,14 @@
-# Changelog
-
-All notable changes to Token Tracker will be documented here.
-Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
-Versioning: [Semantic Versioning](https://semver.org/)
-
----
-
-## [Unreleased]
-- Nothing pending yet
-
----
-
-## [1.0.0] - 2026-05-30
+## [2.0.0] - 2026-06-06
 ### Added
-- Live token counter bar injected above input box on ChatGPT and Claude
-- Progress bar with color states: green → yellow (70%) → red pulsing (90%)
-- Context window exhaustion popup at 100% usage, auto-dismisses after 12s
-- Session reset detection via URL change (new conversation resets counter)
-- Toolbar popup showing used / remaining / limit with platform and model name
-- Lightweight character-based token estimator (÷4 chars/token, no WASM)
-- Dark mode support via `prefers-color-scheme` and ChatGPT/Claude dark class detection
-- Support for ChatGPT models: GPT-4o (128k), GPT-3.5 (16k), o1/o3 (200k)
-- Support for Claude models: all current models (200k context)
+- TokenPulse rebrand — dual-ring teal icon, consistent dark teal theme
+- Real Claude API rate limits (5-hour session + 7-day weekly with reset countdowns)
+- Auto-saving daily usage history — records silently without any user action
+- Smart threshold notifications at 75%, 90%, 100% (50% available, off by default)
+- Settings moved inside popup — no new tabs
+- Session history persists across tab closes and page refreshes
+- Alpha branding — Built by Anoop Kumar and Mansi Rathore
+
+### Changed
+- Complete UI rebuild — teal color system replacing green
+- Both platforms now show Daily Usage History section
+- Notification logic overhauled — threshold-based not timer-based
