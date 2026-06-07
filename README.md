@@ -1,80 +1,154 @@
-# Token Tracker — Chrome Extension
+# TokenPulse
 
-Live token counter for ChatGPT and Claude. Shows remaining context window tokens directly above the input box.
+**Live token & rate limit tracker for Claude and ChatGPT.**
 
----
-
-## Install (Developer Mode)
-
-1. Open Chrome → `chrome://extensions/`
-2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked**
-4. Select the `token-tracker-extension` folder
-5. Open ChatGPT or Claude — the bar appears above the input
+Built by Anoop Kumar and Mansi Rathore · Alpha
 
 ---
 
-## How It Works
+## What it does
 
-| Step | Mechanism |
-|------|-----------|
-| Token counting | Character count ÷ 4 (OpenAI's documented approximation) |
-| Session reset | URL change detection + MutationObserver on conversation container |
-| Model detection | Reads the active model button text from the DOM |
-| Context limits | Hardcoded per model (GPT-4o: 128k, Claude: 200k) |
+TokenPulse sits inside Claude and ChatGPT and tells you exactly where you stand — before the model starts forgetting your conversation or your session gets cut off.
 
-**Accuracy:** ±5–10%. The estimator errs conservative (shows slightly more remaining than actual), which is the safe direction — no false urgency.
+A live token bar above the input box tracks your context window in real time. Click the toolbar icon for the full dashboard.
 
 ---
 
-## UI States
+## Features
 
-| Fill Color | Meaning |
-|------------|---------|
-| 🟢 Green | < 70% used |
-| 🟡 Yellow | 70–90% used |
-| 🔴 Red (pulsing) | > 90% used |
-| Popup | 100% reached — context window full |
+| Feature | Claude | ChatGPT |
+|---------|--------|---------|
+| Live in-page token bar | ✅ | ✅ |
+| Context window tracking | ✅ | ✅ |
+| Daily usage history | ✅ | ✅ |
+| Real rate limit data (5hr + 7day) | ✅ | — |
+| Reset countdowns | ✅ | — |
+| Smart notifications (75%, 90%, 100%) | ✅ | ✅ |
+| Settings — thresholds + refresh interval | ✅ | ✅ |
+
+ChatGPT does not expose rate limit data via any API. Context window tracking works on both platforms.
 
 ---
 
-## File Structure
+## Install
+
+### Chrome Web Store
+Coming soon.
+
+### Manual (Developer Mode)
+1. Clone or download this repo
+2. Go to `chrome://extensions/`
+3. Enable **Developer mode**
+4. Click **Load unpacked**
+5. Select the `src/` folder
+
+Works on Chrome, Edge, Brave, and Opera.
+
+---
+
+## Project Structure
 
 ```
-manifest.json      — Extension config (MV3)
-tokenizer.js       — Token estimator (loaded before content.js)
-content.js         — DOM reading, UI injection, session tracking
-injected.css       — Styles for bar + popup (scoped, no collisions)
-background.js      — Service worker (minimal — just keeps extension alive)
-popup.html/js      — Extension popup (click the toolbar icon)
-icons/             — Extension icons
+src/
+├── manifest.json
+├── background/
+│   └── service-worker.js     # Alarms, API fetch, notifications
+├── content/
+│   ├── content.js            # In-page token bar (both platforms)
+│   └── content.css           # Bar + popup styles
+├── lib/
+│   ├── constants.js          # All config, limits, colors, keys
+│   ├── storage.js            # All chrome.storage ops
+│   └── tokenizer.js          # Character-based token estimator
+├── popup/
+│   ├── popup.html
+│   ├── popup.css
+│   └── popup.js              # Main view + settings view
+├── welcome/
+│   └── welcome.html          # First install onboarding
+└── icons/
+    ├── icon16.png
+    ├── icon48.png
+    └── icon128.png
 ```
 
 ---
 
-## Adding a New Platform (Future)
+## How token counting works
 
-1. Add a new entry to `PLATFORMS` in `content.js`
-2. Add its `match()`, `messageSelector`, `inputWrapperSelector`, `limits`, `getActiveModel()`, `getSessionId()`
-3. Add the URL to `host_permissions` in `manifest.json`
-4. Add to `SUPPORTED` array in `popup.js`
+TokenPulse estimates tokens using the `chars ÷ 4` rule — OpenAI's documented approximation for English text. Accuracy is ±8%, which errs conservative (shows slightly more remaining than actual).
 
-No changes needed to tokenizer, CSS, or background.
+For Claude, real rate limit data (5-hour session and 7-day weekly utilization) is fetched directly from Claude's internal API using your existing browser session. No credentials are stored or transmitted anywhere.
 
 ---
 
-## Known Limitations
+## Notifications
 
-- Token count resets on page refresh (no persistence yet — add `chrome.storage` in v2)
-- Model auto-detection depends on ChatGPT/Claude DOM — may break on UI updates
-- Does not count system prompts (they're hidden from the DOM)
+Notifications fire when you cross a new threshold — not on a timer. Once you're notified at 75%, you won't be notified again until you cross 90%. If usage drops below all thresholds, the tracker resets so you'll be notified again next time.
+
+Default thresholds: **75%, 90%, 100%** (50% available, off by default).
 
 ---
 
-## Root Cause Debugging
+## Privacy
 
-If the bar doesn't appear:
-1. Check `chrome://extensions/` for errors
-2. Open DevTools on the ChatGPT/Claude tab → Console → look for `[TokenTracker]` messages
-3. Most likely cause: the `inputWrapperSelector` changed after a ChatGPT/Claude UI update — update the selector in `content.js` `PLATFORMS` config
+- All data stored locally via `chrome.storage.local`
+- No external servers, no analytics, no tracking
+- Claude rate limit data fetched from `claude.ai/api` using your existing session only
+- Full privacy policy: [privacy.html](./privacy.html)
 
+---
+
+## Roadmap
+
+### v2.0 — Current
+- Dual-platform support (Claude + ChatGPT)
+- Real Claude API rate limits
+- Auto-saving daily usage history
+- Smart threshold notifications
+- Settings inside popup (no new tabs)
+- TokenPulse branding
+
+### v2.1 — Next
+- Firefox support
+- Response-ready notification (alert when model finishes generating)
+- Weekly usage summary
+
+### Future
+- Chrome Web Store release
+- Usage export (CSV)
+- Keyboard shortcut to open popup
+
+---
+
+## Development
+
+No build step. Pure vanilla JS, HTML, CSS.
+
+```bash
+git clone https://github.com/yourusername/tokenpulse
+# Load src/ as unpacked extension in chrome://extensions/
+```
+
+To release:
+```bash
+git tag v2.0.0
+git push --tags
+# GitHub Actions auto-zips src/ and creates a release
+```
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md)
+
+---
+
+## License
+
+MIT — see LICENSE file
+
+---
+
+*TokenPulse is an independent project. Not affiliated with Anthropic or OpenAI.*
