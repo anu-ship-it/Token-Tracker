@@ -253,6 +253,16 @@ function renderSettings(state) {
         <button class="save-btn" id="save-btn">Save Settings</button>
         <div class="saved-msg" id="saved-msg" style="opacity:0">✓ Settings saved</div>
       </div>
+
+      <div style="padding:0 14px 14px;border-top:1px solid #0a2e32;margin-top:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#2a6b72">TokenPulse</div>
+            <div style="font-size:10px;color:#0d3d42;margin-top:2px">Built by Anoop Kumar & Mansi Rathore· Alpha</div>
+          </div>
+          <div style="font-size:10px;color:#0d3d42">v2.0.0</div>
+        </div>
+      </div>
     `;
 
     document.getElementById("back-btn").addEventListener("click", () => renderMain(state));

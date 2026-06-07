@@ -23,16 +23,14 @@
       width: 64px; height: 64px; border-radius: 18px;
       background: #021c1e; border: 2px solid #0d3d42;
       display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 20px; position: relative;
-      overflow: hidden;
+      margin: 0 auto 18px;
     }
     .logo svg { width: 48px; height: 48px; }
-    h1 { font-size: 22px; font-weight: 700; color: #e0f7fa; margin-bottom: 6px; }
+    h1 { font-size: 22px; font-weight: 700; color: #e0f7fa; margin-bottom: 4px; }
+    .tagline { font-size: 11px; color: #0d3d42; margin-bottom: 6px; letter-spacing: .08em; text-transform: uppercase; }
     .sub { font-size: 12px; color: #2a6b72; line-height: 1.6; margin-bottom: 26px; }
 
-    .platforms {
-      display: flex; gap: 8px; margin-bottom: 26px;
-    }
+    .platforms { display: flex; gap: 8px; margin-bottom: 26px; }
     .plat {
       flex: 1; padding: 10px 8px;
       border-radius: 8px; border: 1px solid #0d3d42;
@@ -61,7 +59,22 @@
       transition: opacity .15s;
     }
     .cta:hover { opacity: .85; }
-    .note { font-size: 10px; color: #0d3d42; margin-top: 12px; line-height: 1.6; }
+
+    .built-by {
+      margin-top: 20px;
+      display: flex; align-items: center;
+      justify-content: center; gap: 8px;
+    }
+    .built-by-divider {
+      height: 1px; flex: 1; background: #0d3d42;
+    }
+    .built-by-text {
+      font-size: 10px; color: #0d3d42;
+      letter-spacing: .06em; white-space: nowrap;
+    }
+    .built-by-text span { color: #2a6b72; font-weight: 600; }
+
+    .note { font-size: 10px; color: #0a2e32; margin-top: 10px; line-height: 1.6; }
   </style>
 </head>
 <body>
@@ -75,7 +88,9 @@
         <text x="24" y="29" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="13" font-weight="800" fill="white">T</text>
       </svg>
     </div>
+
     <h1>TokenPulse</h1>
+    <div class="tagline">by Alpha</div>
     <p class="sub">Context window and rate limit tracking for Claude and ChatGPT.</p>
 
     <div class="platforms">
@@ -86,11 +101,11 @@
     <div class="steps">
       <div class="step">
         <div class="num">1</div>
-        <div class="step-text"><strong>Pin the extension</strong> to your toolbar — the dual-ring icon shows usage at a glance.</div>
+        <div class="step-text"><strong>Pin the extension</strong> to your toolbar — the dual-ring icon shows your usage at a glance.</div>
       </div>
       <div class="step">
         <div class="num">2</div>
-        <div class="step-text"><strong>Open Claude or ChatGPT</strong> — a live token bar appears above the input box.</div>
+        <div class="step-text"><strong>Open Claude or ChatGPT</strong> — a live token bar appears above the input box tracking your context window.</div>
       </div>
       <div class="step">
         <div class="num">3</div>
@@ -99,6 +114,13 @@
     </div>
 
     <button class="cta" id="start-btn">Get Started</button>
+
+    <div class="built-by">
+      <div class="built-by-divider"></div>
+      <div class="built-by-text">Built by <span>Anoop Kumar and Mansi Rathore</span> · Alpha</div>
+      <div class="built-by-divider"></div>
+    </div>
+
     <p class="note">All data stays on your device. No servers, no accounts, no tracking.</p>
   </div>
   <script>
