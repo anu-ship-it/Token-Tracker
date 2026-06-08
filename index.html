@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="TokenPulse tracks your token usage and rate limits in real time on Claude and ChatGPT. Live token bar, smart notifications, daily history. Free Chrome extension.">
+  <meta property="og:title" content="TokenPulse — Token & Rate Limit Tracker">
+  <meta property="og:description" content="Never get cut off mid-conversation again. Live token tracking for Claude and ChatGPT.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>TokenPulse — Token & Rate Limit Tracker for Claude & ChatGPT</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #030f10;
+      --bg2:       #021c1e;
+      --bg3:       #031e21;
+      --border:    #0d3d42;
+      --border2:   #0a2e32;
+      --teal:      #06b6d4;
+      --teal-light:#67e8f9;
+      --teal-dim:  #2a6b72;
+      --teal-muted:#0d3d42;
+      --text:      #e0f7fa;
+      --text-dim:  #4a9ba5;
+      --text-muted:#1e5f6a;
+      --yellow:    #f59e0b;
+      --red:       #ef4444;
+      --white:     #ffffff;
+      --font:      -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* ── Nav ──────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 16px 40px;
+      background: rgba(3,15,16,.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border2);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo-icon {
+      width: 32px; height: 32px; border-radius: 9px;
+      background: var(--bg2); border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-logo-name {
+      font-size: 15px; font-weight: 700;
+      color: var(--teal-light); letter-spacing: .01em;
+    }
+    .nav-links {
+      display: flex; align-items: center; gap: 28px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 13px; color: var(--teal-dim);
+      text-decoration: none; transition: color .15s;
+    }
+    .nav-links a:hover { color: var(--teal-light); }
+    .nav-cta {
+      font-size: 12px; font-weight: 700;
+      padding: 8px 18px; border-radius: 8px;
+      background: rgba(6,182,212,.1);
+      color: var(--teal); border: 1px solid rgba(6,182,212,.25);
+      text-decoration: none; transition: background .15s;
+      white-space: nowrap;
+    }
+    .nav-cta:hover { background: rgba(6,182,212,.2); }
+
+    /* ── Hero ─────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center;
+      padding: 120px 40px 80px;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: "";
+      position: absolute; top: -200px; left: 50%;
+      transform: translateX(-50%);
+      width: 800px; height: 800px;
+      background: radial-gradient(circle, rgba(6,182,212,.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-inner {
+      max-width: 1100px; margin: 0 auto; width: 100%;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 64px; align-items: center;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700; letter-spacing: .1em;
+      color: var(--teal); text-transform: uppercase;
+      background: rgba(6,182,212,.08);
+      border: 1px solid rgba(6,182,212,.2);
+      padding: 4px 12px; border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .hero-badge-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--teal);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .5; transform: scale(.8); }
+    }
+    h1 {
+      font-size: clamp(36px, 5vw, 52px);
+      font-weight: 800; line-height: 1.1;
+      letter-spacing: -.03em; margin-bottom: 20px;
+      color: var(--text);
+    }
+    h1 span { color: var(--teal); }
+    .hero-sub {
+      font-size: 17px; color: var(--teal-dim);
+      line-height: 1.65; margin-bottom: 36px;
+      max-width: 440px;
+    }
+    .hero-sub strong { color: var(--teal-light); font-weight: 600; }
+    .hero-actions { display: flex; flex-direction: column; gap: 12px; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 14px 28px; border-radius: 10px;
+      background: var(--teal); color: var(--bg);
+      font-size: 14px; font-weight: 700;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: opacity .15s, transform .15s;
+      width: fit-content;
+    }
+    .btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-primary:active { transform: scale(.97); }
+    .btn-primary svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .hero-note {
+      font-size: 11px; color: var(--text-muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .hero-note::before { content: "✓"; color: var(--teal-muted); font-weight: 700; }
+
+    /* Email form */
+    .notify-form {
+      display: flex; gap: 8px; max-width: 380px;
+    }
+    .notify-input {
+      flex: 1; padding: 10px 14px;
+      background: var(--bg2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: 13px; font-family: var(--font);
+      outline: none; transition: border-color .15s;
+    }
+    .notify-input::placeholder { color: var(--text-muted); }
+    .notify-input:focus { border-color: var(--teal); }
+    .notify-btn {
+      padding: 10px 18px; border-radius: 8px;
+      background: rgba(6,182,212,.1);
+      color: var(--teal); border: 1px solid rgba(6,182,212,.25);
+      font-size: 12px; font-weight: 700;
+      cursor: pointer; font-family: var(--font);
+      transition: background .15s; white-space: nowrap;
+    }
+    .notify-btn:hover { background: rgba(6,182,212,.2); }
+    .notify-label {
+      font-size: 11px; color: var(--text-muted); margin-bottom: 6px;
+    }
+    .notify-success {
+      font-size: 12px; color: var(--teal);
+      display: none; padding: 10px 0;
+    }
+
+    /* Hero visual */
+    .hero-visual {
+      display: flex; justify-content: center; align-items: center;
+      position: relative;
+    }
+    .hero-visual::before {
+      content: "";
+      position: absolute; inset: -40px;
+      background: radial-gradient(circle, rgba(6,182,212,.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .popup-mockup {
+      width: 280px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(6,182,212,.1);
+      position: relative; z-index: 1;
+    }
+    .pm-header {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px; border-bottom: 1px solid var(--border2);
+    }
+    .pm-logo-row { display: flex; align-items: center; gap: 8px; }
+    .pm-logo {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: var(--bg); border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pm-name { font-size: 12px; font-weight: 700; color: var(--teal-light); }
+    .pm-badge {
+      font-size: 9px; font-weight: 700; padding: 2px 8px;
+      border-radius: 20px; background: rgba(6,182,212,.12); color: var(--teal);
+    }
+    .pm-section { padding: 12px 14px; border-bottom: 1px solid var(--border2); }
+    .pm-section-title {
+      font-size: 8px; font-weight: 700; letter-spacing: .12em;
+      color: var(--teal-muted); text-transform: uppercase; margin-bottom: 10px;
+    }
+    .pm-big-num { font-size: 28px; font-weight: 800; color: var(--teal); letter-spacing: -.03em; }
+    .pm-meta { font-size: 10px; color: var(--teal-dim); margin-top: 2px; margin-bottom: 8px; }
+    .pm-bar-track { width: 100%; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .pm-bar-fill  { height: 100%; border-radius: 2px; background: var(--teal); }
+    .pm-row {
+      display: flex; align-items: center;
+      justify-content: space-between; padding: 9px 0;
+    }
+    .pm-row + .pm-row { border-top: 1px solid var(--border2); }
+    .pm-row-name { font-size: 11px; font-weight: 600; color: #4a9ba5; }
+    .pm-row-sub  { font-size: 9px; color: var(--teal-muted); margin-top: 1px; }
+    .pm-row-pct  { font-size: 13px; font-weight: 800; }
+    .pm-row-mini { width: 60px; height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; margin-top: 4px; }
+    .pm-row-mini-fill { height: 100%; border-radius: 1px; }
+    .pm-footer {
+      display: flex; align-items: center;
+      justify-content: space-between; padding: 10px 14px;
+    }
+    .pm-footer-note { font-size: 9px; color: var(--text-muted); }
+    .pm-new-chat {
+      font-size: 9px; font-weight: 700; padding: 5px 12px;
+      border-radius: 6px; background: rgba(6,182,212,.08);
+      color: var(--teal); border: 1px solid rgba(6,182,212,.2);
+    }
+
+    /* Bar mockup */
+    .bar-mockup {
+      position: absolute; bottom: -24px; left: -20px;
+      width: 240px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 10px;
+      display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    .bm-label { font-size: 8px; font-weight: 700; letter-spacing: .1em; color: var(--teal-muted); }
+    .bm-track { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .bm-fill  { height: 100%; width: 17%; background: var(--teal); border-radius: 2px; }
+    .bm-count { font-size: 10px; font-weight: 600; color: var(--teal); white-space: nowrap; }
+
+    /* ── Platforms ────────────────────────────── */
+    .platforms {
+      padding: 0 40px 80px;
+      display: flex; justify-content: center;
+    }
+    .platforms-inner {
+      max-width: 600px; width: 100%;
+      display: flex; align-items: center;
+      gap: 12px; flex-wrap: wrap; justify-content: center;
+    }
+    .platform-pill {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 30px;
+      background: var(--bg2); border: 1px solid var(--border);
+      font-size: 13px; font-weight: 600; color: var(--teal);
+    }
+    .platform-pill-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--teal);
+    }
+    .platforms-divider { font-size: 12px; color: var(--text-muted); }
+
+    /* ── Section shared ───────────────────────── */
+    section { padding: 80px 40px; }
+    .section-inner { max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .14em;
+      color: var(--teal); text-transform: uppercase; margin-bottom: 12px;
+    }
+    h2 {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 800; line-height: 1.15;
+      letter-spacing: -.025em; margin-bottom: 14px;
+    }
+    h2 span { color: var(--teal); }
+    .section-sub {
+      font-size: 15px; color: var(--teal-dim);
+      max-width: 520px; line-height: 1.65; margin-bottom: 48px;
+    }
+
+    /* ── Features grid ────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .feature-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 24px;
+      transition: border-color .2s, transform .2s;
+    }
+    .feature-card:hover { border-color: rgba(6,182,212,.3); transform: translateY(-2px); }
+    .feature-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: rgba(6,182,212,.08); border: 1px solid rgba(6,182,212,.15);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; margin-bottom: 14px;
+    }
+    .feature-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .feature-desc  { font-size: 12px; color: var(--teal-dim); line-height: 1.6; }
+    .feature-tag {
+      display: inline-block; margin-top: 10px;
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      padding: 2px 8px; border-radius: 4px;
+      background: rgba(6,182,212,.08); color: var(--teal);
+    }
+    .feature-tag.both { background: rgba(103,232,249,.06); color: var(--teal-light); }
+
+    /* ── Compare ──────────────────────────────── */
+    .compare-section { background: var(--bg2); border-top: 1px solid var(--border2); border-bottom: 1px solid var(--border2); }
+    .compare-grid {
+      display: grid; grid-template-columns: 2fr 1fr 1fr;
+      gap: 0; border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    }
+    .compare-header {
+      padding: 14px 20px;
+      background: var(--bg3); border-bottom: 1px solid var(--border);
+      font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      color: var(--teal-dim); text-transform: uppercase;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .compare-header.ours { color: var(--teal-light); }
+    .compare-row {
+      display: contents;
+    }
+    .compare-cell {
+      padding: 13px 20px;
+      border-bottom: 1px solid var(--border2);
+      font-size: 13px; color: var(--teal-dim);
+      display: flex; align-items: center;
+    }
+    .compare-cell:nth-child(3n+2),
+    .compare-cell:nth-child(3n+3) {
+      justify-content: center;
+      border-left: 1px solid var(--border2);
+    }
+    .compare-cell.feature-name { font-weight: 500; color: #4a9ba5; }
+    .check { color: var(--teal); font-size: 15px; font-weight: 700; }
+    .cross { color: var(--text-muted); font-size: 13px; }
+    .ours-col { background: rgba(6,182,212,.03); }
+
+    /* ── Tips ─────────────────────────────────── */
+    .tips-tabs {
+      display: flex; gap: 8px; margin-bottom: 32px; flex-wrap: wrap;
+    }
+    .tips-tab {
+      padding: 7px 18px; border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+      background: var(--bg2); border: 1px solid var(--border);
+      color: var(--teal-dim); cursor: pointer; transition: all .15s;
+    }
+    .tips-tab.active {
+      background: rgba(6,182,212,.1);
+      border-color: rgba(6,182,212,.3); color: var(--teal);
+    }
+    .tips-panel { display: none; }
+    .tips-panel.active { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .tip-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 20px;
+    }
+    .tip-num {
+      font-size: 10px; font-weight: 800; color: var(--teal-muted);
+      letter-spacing: .1em; margin-bottom: 8px;
+    }
+    .tip-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .tip-body  { font-size: 12px; color: var(--teal-dim); line-height: 1.6; }
+    .tip-prompt {
+      margin-top: 10px; padding: 10px 12px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: 7px; font-size: 11px;
+      color: var(--teal-light); font-family: 'SF Mono', monospace;
+      line-height: 1.6;
+    }
+
+    /* ── About ────────────────────────────────── */
+    .about-section { border-top: 1px solid var(--border2); }
+    .about-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 16px; padding: 40px;
+      display: flex; align-items: center; gap: 32px;
+    }
+    .about-avatar {
+      width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
+      background: var(--bg3); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 800; color: var(--teal);
+    }
+    .about-name { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .about-role { font-size: 12px; color: var(--teal); margin-bottom: 10px; }
+    .about-bio  { font-size: 13px; color: var(--teal-dim); line-height: 1.65; max-width: 500px; }
+
+    /* ── CTA banner ───────────────────────────── */
+    .cta-banner {
+      margin: 0 40px 80px;
+      background: linear-gradient(135deg, rgba(6,182,212,.08), rgba(103,232,249,.04));
+      border: 1px solid rgba(6,182,212,.2);
+      border-radius: 20px; padding: 56px 48px;
+      text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .cta-banner::before {
+      content: "";
+      position: absolute; top: -100px; left: 50%;
+      transform: translateX(-50%);
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(6,182,212,.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-banner h2 { margin-bottom: 12px; }
+    .cta-banner p { color: var(--teal-dim); margin-bottom: 28px; font-size: 15px; }
+
+    /* ── Footer ───────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border2);
+      padding: 32px 40px;
+      display: flex; align-items: center;
+      justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    }
+    .footer-left { font-size: 12px; color: var(--text-muted); }
+    .footer-left span { color: var(--teal-dim); }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a { font-size: 12px; color: var(--text-muted); text-decoration: none; transition: color .15s; }
+    .footer-links a:hover { color: var(--teal); }
+
+    /* ── Responsive ───────────────────────────── */
+    @media (max-width: 768px) {
+      nav { padding: 14px 20px; }
+      .nav-links { display: none; }
+      .hero { padding: 100px 20px 60px; }
+      .hero-inner { grid-template-columns: 1fr; gap: 48px; }
+      .hero-visual { order: -1; }
+      .bar-mockup { display: none; }
+      .platforms { padding: 0 20px 60px; }
+      section { padding: 60px 20px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .compare-grid { grid-template-columns: 1.5fr 1fr 1fr; }
+      .tips-panel.active { grid-template-columns: 1fr; }
+      .about-card { flex-direction: column; padding: 28px; }
+      .cta-banner { margin: 0 20px 60px; padding: 40px 24px; }
+      footer { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────── -->
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="7" stroke="#0d3d42" stroke-width="2"/>
+        <path d="M9 2 a7 7 0 0 1 6.06 3.5" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="9" cy="9" r="4" stroke="#0d3d42" stroke-width="1.5"/>
+        <path d="M9 5 a4 4 0 0 1 3.46 2 a4 4 0 0 1 0 4" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round"/>
+        <text x="9" y="12.5" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="7" font-weight="800" fill="white">T</text>
+      </svg>
+    </div>
+    <span class="nav-logo-name">TokenPulse</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#compare">Compare</a></li>
+    <li><a href="#tips">Tips</a></li>
+    <li><a href="#about">About</a></li>
+  </ul>
+  <a href="#install" class="nav-cta">Add to Chrome — Free</a>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────── -->
+<section class="hero" id="install">
+  <div class="hero-inner">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <div class="hero-badge-dot"></div>
+        Free Chrome Extension
+      </div>
+      <h1>Never get cut off<br><span>mid-conversation</span><br>again.</h1>
+      <p class="hero-sub">
+        TokenPulse tracks your <strong>context window</strong> and <strong>rate limits</strong>
+        in real time — directly inside Claude and ChatGPT.
+        Live bar, smart alerts, daily history.
+      </p>
+      <div class="hero-actions">
+        <a href="https://chrome.google.com/webstore" class="btn-primary" id="install-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 16l-4-4h3V4h2v8h3l-4 4z"/>
+            <path d="M20 18H4" stroke-linecap="round"/>
+          </svg>
+          Add to Chrome — it's free
+        </a>
+        <span class="hero-note">No account needed. Works immediately.</span>
+
+        <div style="margin-top: 8px;">
+          <div class="notify-label">Get notified when Gemini support launches →</div>
+          <form class="notify-form" id="notify-form" action="https://formspree.io/f/xqeoqzdg" method="POST">
+            <input class="notify-input" type="email" name="email" placeholder="your@email.com" required>
+            <button class="notify-btn" type="submit">Notify me</button>
+          </form>
+          <div class="notify-success" id="notify-success">✓ You're on the list. We'll let you know.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Popup mockup -->
+    <div class="hero-visual">
+      <div class="popup-mockup">
+        <div class="pm-header">
+          <div class="pm-logo-row">
+            <div class="pm-logo">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <circle cx="6.5" cy="6.5" r="5" stroke="#0d3d42" stroke-width="1.5"/>
+                <path d="M6.5 1.5 a5 5 0 0 1 4.33 2.5" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="6.5" cy="6.5" r="3" stroke="#0d3d42" stroke-width="1.2"/>
+                <path d="M6.5 3.5 a3 3 0 0 1 2.6 1.5 a3 3 0 0 1 0 3" stroke="#67e8f9" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <span class="pm-name">TokenPulse</span>
+          </div>
+          <span class="pm-badge">Claude</span>
+        </div>
+
+        <div class="pm-section">
+          <div class="pm-section-title">Context Window</div>
+          <div class="pm-big-num">~41k</div>
+          <div class="pm-meta">~159k remaining · 20% used</div>
+          <div class="pm-bar-track">
+            <div class="pm-bar-fill" style="width:20%"></div>
+          </div>
+        </div>
+
+        <div class="pm-section">
+          <div class="pm-section-title">Rate Limits</div>
+          <div class="pm-row">
+            <div>
+              <div class="pm-row-name">5-Hour Session</div>
+              <div class="pm-row-sub">Resets in 3h 14m</div>
+            </div>
+            <div style="text-align:right">
+              <div class="pm-row-pct" style="color:#f59e0b">79%</div>
+              <div class="pm-row-mini"><div class="pm-row-mini-fill" style="width:79%;background:#f59e0b"></div></div>
+            </div>
+          </div>
+          <div class="pm-row">
+            <div>
+              <div class="pm-row-name">7-Day Weekly</div>
+              <div class="pm-row-sub">Resets in 63h 54m</div>
+            </div>
+            <div style="text-align:right">
+              <div class="pm-row-pct" style="color:#06b6d4">26%</div>
+              <div class="pm-row-mini"><div class="pm-row-mini-fill" style="width:26%;background:#06b6d4"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pm-footer">
+          <span class="pm-footer-note">chars ÷ 4 · ±8%</span>
+          <span class="pm-new-chat">+ New chat</span>
+        </div>
+      </div>
+
+      <!-- In-page bar mockup -->
+      <div class="bar-mockup">
+        <span class="bm-label">TOKENS</span>
+        <div class="bm-track"><div class="bm-fill"></div></div>
+        <span class="bm-count">199.3k left</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Platforms ──────────────────────────── -->
+<div class="platforms">
+  <div class="platforms-inner">
+    <div class="platform-pill">
+      <div class="platform-pill-dot"></div>
+      Works on Claude
+    </div>
+    <div class="platforms-divider">+</div>
+    <div class="platform-pill">
+      <div class="platform-pill-dot"></div>
+      Works on ChatGPT
+    </div>
+    <div class="platforms-divider">·</div>
+    <span style="font-size:12px;color:var(--text-muted)">Gemini coming soon</span>
+  </div>
+</div>
+
+<!-- ── Features ───────────────────────────── -->
+<section id="features" style="border-top:1px solid var(--border2)">
+  <div class="section-inner">
+    <div class="section-label">Features</div>
+    <h2>Everything you need to<br><span>stay ahead of the limit.</span></h2>
+    <p class="section-sub">Built for power users who write long documents, run deep research sessions, or just have long conversations.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Live Token Bar</div>
+        <div class="feature-desc">A slim bar sits above the input box showing exactly how much context window you have left — updates with every message.</div>
+        <span class="feature-tag both">Claude + ChatGPT</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-title">Real Rate Limit Data</div>
+        <div class="feature-desc">Pulls your actual 5-hour session and 7-day weekly usage directly from Claude's API. Exact percentages, exact reset countdowns.</div>
+        <span class="feature-tag">Claude only</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔔</div>
+        <div class="feature-title">Smart Notifications</div>
+        <div class="feature-desc">Get alerted at 75%, 90%, and 100% — before the wall hits. Threshold-based, not timer-based. Zero noise.</div>
+        <span class="feature-tag both">Claude + ChatGPT</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📅</div>
+        <div class="feature-title">Daily Usage History</div>
+        <div class="feature-desc">Automatically records your peak token usage per day. No setup — it just works silently in the background as you chat.</div>
+        <span class="feature-tag both">Claude + ChatGPT</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚙️</div>
+        <div class="feature-title">Settings Inside Popup</div>
+        <div class="feature-desc">Configure notification thresholds and refresh intervals without leaving the popup. No new tabs, no settings pages.</div>
+        <span class="feature-tag both">Claude + ChatGPT</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-title">100% Private</div>
+        <div class="feature-desc">All data stays on your device. No accounts, no tracking, no analytics. Claude rate data uses your existing session only.</div>
+        <span class="feature-tag both">Claude + ChatGPT</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Compare ────────────────────────────── -->
+<section id="compare" class="compare-section">
+  <div class="section-inner">
+    <div class="section-label">Compare</div>
+    <h2>Why TokenPulse<br><span>covers more ground.</span></h2>
+    <p class="section-sub">Most token trackers only work on one platform. TokenPulse works on both — with more features, for free.</p>
+
+    <div class="compare-grid">
+      <div class="compare-header">Feature</div>
+      <div class="compare-header ours">TokenPulse</div>
+      <div class="compare-header">Others</div>
+
+      <div class="compare-cell feature-name">Works on Claude</div>
+      <div class="compare-cell ours-col"><span class="check">✓</span></div>
+      <div class="compare-cell"><span class="check">✓</span></div>
+
+      <div class="compare-cell feature-name">Works on ChatGPT</div>
+      <div class="compare-cell ours-col"><span class="check">✓</span></div>
+      <div class="compare-cell"><span class="cross">—</span></div>
+
+      <div class="compare-cell feature-name">Live in-page token bar</div>
+      <div class="compare-cell ours-col"><span class="check">✓</span></div>
+      <div class="compare-cell"><span class="cross">—</span></div>
+
+      <div class="compare-cell feature-name">Real Claude rate limits (API)</div>
+      <div class="compare-cell ours-col"><span class="check">✓</span></div>
+      <div class="compare-cell"><span class="check">✓</span></div>
+
+      <div class="compare-cell feature-name">Reset countdowns</div>
+      <div class="compare-cell ours-col"><span class="check">✓</span></div>
+      <div class="compare-cell"><span class="check">✓</span></div>
+
+      <div class="compare-cell feature-name">Daily usage history</div>
+      <div class="compare-cell ours-col"><span class="check">✓</span></div>
+      <div class="compare-cell"><span class="cross">—</span></div>
+
+      <div class="compare-cell feature-name">Smart notifications</div>
+      <div class="compare-cell ours-col"><span class="check">✓</span></div>
+      <div class="compare-cell"><span class="cross">roadmap</span></div>
+
+      <div class="compare-cell feature-name">Works on Windows / Linux</div>
+      <div class="compare-cell ours-col"><span class="check">✓</span></div>
+      <div class="compare-cell"><span class="cross">Mac only</span></div>
+
+      <div class="compare-cell feature-name">Free</div>
+      <div class="compare-cell ours-col"><span class="check">✓</span></div>
+      <div class="compare-cell"><span class="cross">paid</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Tips ───────────────────────────────── -->
+<section id="tips" style="border-top:1px solid var(--border2)">
+  <div class="section-inner">
+    <div class="section-label">Token Tips</div>
+    <h2>Use less. <span>Get more</span><br>from every session.</h2>
+    <p class="section-sub">Practical tips to stretch your context window and avoid hitting limits mid-conversation.</p>
+
+    <div class="tips-tabs">
+      <button class="tips-tab active" onclick="switchTab('claude')">Claude</button>
+      <button class="tips-tab" onclick="switchTab('chatgpt')">ChatGPT</button>
+    </div>
+
+    <div class="tips-panel active" id="tips-claude">
+      <div class="tip-card">
+        <div class="tip-num">01</div>
+        <div class="tip-title">Start a new chat when the topic changes</div>
+        <div class="tip-body">Every message in a conversation adds to the context. When you shift topics, start fresh — don't drag old context into a new task.</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-num">02</div>
+        <div class="tip-title">Use Projects for recurring work</div>
+        <div class="tip-body">Put stable instructions and files in a Claude Project instead of pasting them every session. Claude remembers so you don't have to repeat.</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-num">03</div>
+        <div class="tip-title">Ask for compact answers first</div>
+        <div class="tip-body">Tell Claude to give the shortest useful answer first, then expand only if needed. Saves tokens on both sides of the conversation.</div>
+        <div class="tip-prompt">Give me the shortest useful answer first. Ask if I want more detail.</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-num">04</div>
+        <div class="tip-title">Summarize before a long session</div>
+        <div class="tip-body">If a conversation is getting long, ask Claude to summarize the key decisions so far. Then start a new chat with just that summary.</div>
+        <div class="tip-prompt">Summarize the key decisions and conclusions from this conversation in under 200 words.</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-num">05</div>
+        <div class="tip-title">Use faster models for simple tasks</div>
+        <div class="tip-body">Don't use Claude Opus for formatting a list or rewriting a short paragraph. Save your premium model quota for analysis and deep work.</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-num">06</div>
+        <div class="tip-title">Watch your 5-hour session limit</div>
+        <div class="tip-body">Claude's 5-hour rolling window resets independently of the 7-day limit. TokenPulse shows both — check your session usage before a heavy session.</div>
+      </div>
+    </div>
+
+    <div class="tips-panel" id="tips-chatgpt">
+      <div class="tip-card">
+        <div class="tip-num">01</div>
+        <div class="tip-title">Use Custom Instructions for stable context</div>
+        <div class="tip-body">Put your tone, format preferences, and recurring context in Custom Instructions. Stop re-briefing ChatGPT on every new chat.</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-num">02</div>
+        <div class="tip-title">One job per chat</div>
+        <div class="tip-body">ChatGPT works best when each conversation has a single clear purpose. Mixing research, drafting, and editing in one chat burns context fast.</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-num">03</div>
+        <div class="tip-title">Skip Thinking mode for simple tasks</div>
+        <div class="tip-body">Thinking models use more tokens and quota. Use them for hard architecture decisions or complex debugging — not for rewriting emails.</div>
+        <div class="tip-prompt">Give me a direct answer. No need for deep reasoning on this one.</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-num">04</div>
+        <div class="tip-title">Use Projects for recurring clients or topics</div>
+        <div class="tip-body">ChatGPT Projects keep context scoped. One project per client, one per research area. Keeps conversations focused and context lean.</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-num">05</div>
+        <div class="tip-title">Split research from writing</div>
+        <div class="tip-body">Do your research in one chat, then start a fresh chat for the final output. Don't carry the full research thread into the writing session.</div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-num">06</div>
+        <div class="tip-title">Watch TokenPulse's bar during coding sessions</div>
+        <div class="tip-body">Code and logs consume tokens fast. When the bar hits 70%, start wrapping up or summarize the session state before continuing in a new chat.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── About ───────────────────────────────── -->
+<section id="about" class="about-section">
+  <div class="section-inner">
+    <div class="section-label">About</div>
+    <div class="about-card">
+      <div class="about-avatar">A</div>
+      <div>
+        <div class="about-name">Anoop Kumar and Mansi Rathore</div>
+        <div class="about-role">Builder · Alpha</div>
+        <div class="about-bio">
+          TokenPulse started because I kept getting cut off mid-conversation and had no idea how close I was to the limit.
+          I built the tracker I wished existed — for both Claude and ChatGPT, with real data, not guesses.
+          Alpha is my independent product studio. TokenPulse is the first release.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA Banner ─────────────────────────── -->
+<div class="cta-banner">
+  <div class="section-label" style="margin-bottom:16px">Get started</div>
+  <h2>Stop hitting walls.<br><span>Start tracking.</span></h2>
+  <p>Free. No account. Works in 30 seconds.</p>
+  <a href="#install" class="btn-primary" style="margin:0 auto">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M12 16l-4-4h3V4h2v8h3l-4 4z"/>
+      <path d="M20 18H4" stroke-linecap="round"/>
+    </svg>
+    Add to Chrome — it's free
+  </a>
+</div>
+
+<!-- ── Footer ─────────────────────────────── -->
+<footer>
+  <div class="footer-left">
+    © 2026 <span>TokenPulse</span> · Built by Anoop Kumar and Mansi Rathore· Alpha
+  </div>
+  <div class="footer-links">
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="https://github.com" target="_blank">GitHub</a>
+    <a href="mailto:anup17508@gmail.com">Contact</a>
+  </div>
+</footer>
+
+<script>
+  // Tab switching
+  function switchTab(platform) {
+    document.querySelectorAll('.tips-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tips-panel').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tips-' + platform).classList.add('active');
+  }
+
+  // Formspree email signup
+  document.getElementById('notify-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        body: data,
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        form.style.display = 'none';
+        document.getElementById('notify-success').style.display = 'block';
+      }
+    } catch (_) {}
+  });
+
+  // Update install button when store URL is ready
+  // Replace the href on both install buttons with the real Chrome Web Store URL
+</script>
+
+</body>
+</html>
