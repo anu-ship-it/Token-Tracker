@@ -13,27 +13,27 @@ function safePct(used, limit) {
   if (!limit || used === undefined) return 0;
   const raw = (used / limit) * 100;
   if (raw <= 0) return 0;
-  if (raw < 1) return 1;
+  if (raw < 1)  return 1;
   return Math.min(Math.round(raw), 100);
 }
 
 function colorFor(pct) {
   if (pct >= TT.DANGER) return TT.COLOR.RED;
-  if (pct >= TT.WARN) return TT.COLOR.YELLOW;
+  if (pct >= TT.WARN)   return TT.COLOR.YELLOW;
   return TT.COLOR.GREEN;
 }
 
 function colorClass(pct) {
   if (pct >= TT.DANGER) return "red";
-  if (pct >= TT.WARN) return "yellow";
+  if (pct >= TT.WARN)   return "yellow";
   return "green";
 }
 
 function statusLabel(pct) {
-  if (pct >= 100) return "MAXED OUT";
+  if (pct >= 100)       return "MAXED OUT";
   if (pct >= TT.DANGER) return "CRITICAL";
-  if (pct >= TT.WARN) return "WARNING";
-  if (pct >= 1) return "HEALTHY";
+  if (pct >= TT.WARN)   return "WARNING";
+  if (pct >= 1)         return "HEALTHY";
   return "IDLE";
 }
 
@@ -47,15 +47,95 @@ function countdown(resetsAt) {
 }
 
 function dayLabel(dateStr) {
-  const today = new Date().toDateString();
+  const today     = new Date().toDateString();
   const yesterday = new Date(Date.now() - 86400000).toDateString();
-  if (dateStr === today) return "Today";
+  if (dateStr === today)     return "Today";
   if (dateStr === yesterday) return "Yesterday";
   return new Date(dateStr).toLocaleDateString(undefined, {
     weekday: "short", month: "short", day: "numeric"
   });
 }
 
+// ── Tips content ───────────────────────────────────────────────────
+const TIPS = {
+  claude: [
+    {
+      title: "Start a new chat when topic changes",
+      body: "Every message adds to the context. When you shift topics, start fresh — don't drag old context into a new task.",
+      prompt: null,
+    },
+    {
+      title: "Ask for compact answers first",
+      body: "Tell Claude to give the shortest useful answer, then expand only if needed. Saves tokens on both sides.",
+      prompt: "Give me the shortest useful answer first. Ask if I want more detail.",
+    },
+    {
+      title: "Summarize before a long session",
+      body: "When a conversation gets long, ask Claude to summarize key decisions. Start a new chat with just that summary.",
+      prompt: "Summarize the key decisions from this conversation in under 150 words.",
+    },
+    {
+      title: "Use Projects for recurring context",
+      body: "Put stable instructions and files in a Claude Project instead of repeating them every session.",
+      prompt: null,
+    },
+    {
+      title: "Watch your 5-hour session limit",
+      body: "Claude's 5-hour window resets independently of the 7-day limit. Check both before a heavy session.",
+      prompt: null,
+    },
+    {
+      title: "Use faster models for simple tasks",
+      body: "Don't use Opus for formatting a list. Save your premium quota for deep analysis and complex work.",
+      prompt: null,
+    },
+  ],
+  chatgpt: [
+    {
+      title: "One job per chat",
+      body: "ChatGPT works best with a single clear purpose per conversation. Mixing tasks burns context fast.",
+      prompt: null,
+    },
+    {
+      title: "Put stable context in Custom Instructions",
+      body: "Stop re-briefing ChatGPT on every chat. Put your tone, format preferences, and recurring context in Custom Instructions.",
+      prompt: null,
+    },
+    {
+      title: "Split research from writing",
+      body: "Do research in one chat, then start fresh for the final output. Don't carry the full thread into writing.",
+      prompt: null,
+    },
+    {
+      title: "Skip Thinking mode for simple tasks",
+      body: "Thinking models use more tokens. Use them for complex problems — not for rewriting emails.",
+      prompt: "Give me a direct answer. No deep reasoning needed here.",
+    },
+    {
+      title: "Watch the bar during coding sessions",
+      body: "Code and logs burn tokens fast. When TokenPulse hits 70%, wrap up or summarize before continuing in a new chat.",
+      prompt: null,
+    },
+    {
+      title: "Use Projects for recurring work",
+      body: "One project per client, one per research area. Keeps conversations focused and context lean.",
+      prompt: null,
+    },
+  ],
+};
+
+// Pick 3 random tips, different each time popup opens
+function getRandomTips(platform) {
+  const pool = [...TIPS[platform] || TIPS.claude];
+  const picked = [];
+  while (picked.length < 3 && pool.length > 0) {
+    const i = Math.floor(Math.random() * pool.length);
+    picked.push(pool.splice(i, 1)[0]);
+  }
+  return picked;
+}
+
+// ── Data row builder ───────────────────────────────────────────────
 function dataRow(name, sub, pct) {
   const color = colorFor(pct);
   return `
@@ -81,7 +161,7 @@ function rateLimitsHTML(usage) {
       <div class="section-title">Rate Limits</div>
       <div class="data-card">
         ${dataRow("5-Hour Session", countdown(usage.five_hour?.resets_at), fhPct)}
-        ${dataRow("7-Day Weekly", countdown(usage.seven_day?.resets_at), sdPct)}
+        ${dataRow("7-Day Weekly",   countdown(usage.seven_day?.resets_at), sdPct)}
       </div>
     </div>`;
 }
@@ -95,10 +175,10 @@ function dailyHistoryHTML(history, platform) {
   const rows = days.length === 0
     ? `<div class="no-history">No usage recorded yet.<br>Data saves automatically as you chat.</div>`
     : days.map(d => dataRow(
-      dayLabel(d.date),
-      `Peak ~${fk(d.used)} of ${fk(d.limit)} tokens`,
-      safePct(d.used, d.limit)
-    )).join("");
+        dayLabel(d.date),
+        `Peak ~${fk(d.used)} of ${fk(d.limit)} tokens`,
+        safePct(d.used, d.limit)
+      )).join("");
 
   return `
     <div class="section">
@@ -107,15 +187,50 @@ function dailyHistoryHTML(history, platform) {
     </div>`;
 }
 
+// ── Header builder (shared across views) ──────────────────────────
+function headerHTML(badgeClass, badgeLabel, heroColor, showBack, activeIcon) {
+  const backBtn   = showBack
+    ? `<button class="icon-btn" id="back-btn" style="font-size:13px;color:#2a6b72">←</button>`
+    : "";
+  const logoOrBack = showBack ? backBtn : `
+    <div class="logo">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="7" stroke="#0d3d42" stroke-width="2"/>
+        <path d="M9 2 a7 7 0 0 1 6.06 3.5" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="9" cy="9" r="4" stroke="#0d3d42" stroke-width="1.5"/>
+        <path d="M9 5 a4 4 0 0 1 3.46 2 a4 4 0 0 1 0 4" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round"/>
+        <text x="9" y="12.5" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="7" font-weight="800" fill="white">T</text>
+      </svg>
+    </div>`;
+
+  return `
+    <div class="hd">
+      <div class="hd-left">
+        ${logoOrBack}
+        <span class="app-name">TokenPulse</span>
+      </div>
+      <div class="hd-right">
+        <div class="dot" style="background:${heroColor};box-shadow:0 0 6px ${heroColor}66"></div>
+        <span class="badge ${badgeClass}">${badgeLabel}</span>
+        <button class="icon-btn ${activeIcon === 'tips' ? 'icon-btn-active' : ''}"
+          id="tips-btn" title="Token tips">💡</button>
+        <button class="icon-btn ${activeIcon === 'refresh' ? 'icon-btn-active' : ''}"
+          id="refresh-btn" title="Refresh">↻</button>
+        <button class="icon-btn ${activeIcon === 'settings' ? 'icon-btn-active' : ''}"
+          id="settings-btn" title="Settings">⚙</button>
+      </div>
+    </div>`;
+}
+
 // ── Main view ──────────────────────────────────────────────────────
 function renderMain(state) {
   const { usage, context, history, platform } = state;
-  const root = document.getElementById("root");
+  const root     = document.getElementById("root");
   const isClaude = platform === "claude";
-  const ctx = context?.[platform] || {};
-  const used = ctx.used || 0;
-  const limit = ctx.limit || (isClaude ? TT.LIMITS["default"] : TT.LIMITS["gpt-4o"]);
-  const ctxPct = safePct(used, limit);
+  const ctx      = context?.[platform] || {};
+  const used     = ctx.used  || 0;
+  const limit    = ctx.limit || (isClaude ? TT.LIMITS["default"] : TT.LIMITS["gpt-4o"]);
+  const ctxPct   = safePct(used, limit);
   const ctxColor = colorFor(ctxPct);
 
   const badgeClass = isClaude ? "badge-claude" : platform === "chatgpt" ? "badge-chatgpt" : "badge-none";
@@ -128,26 +243,7 @@ function renderMain(state) {
   const heroColor = colorFor(heroPct);
 
   root.innerHTML = `
-    <div class="hd">
-      <div class="hd-left">
-        <div class="logo">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <circle cx="9" cy="9" r="7" stroke="#0d3d42" stroke-width="2"/>
-            <path d="M9 2 a7 7 0 0 1 6.06 3.5" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="9" cy="9" r="4" stroke="#0d3d42" stroke-width="1.5"/>
-            <path d="M9 5 a4 4 0 0 1 3.46 2 a4 4 0 0 1 0 4" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round"/>
-            <text x="9" y="12.5" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="7" font-weight="800" fill="white">T</text>
-          </svg>
-        </div>
-        <span class="app-name">TokenPulse</span>
-      </div>
-      <div class="hd-right">
-        <div class="dot" style="background:${heroColor};box-shadow:0 0 6px ${heroColor}66"></div>
-        <span class="badge ${badgeClass}">${badgeLabel}</span>
-        <button class="icon-btn" id="refresh-btn" title="Refresh">↻</button>
-        <button class="icon-btn" id="settings-btn" title="Settings">⚙</button>
-      </div>
-    </div>
+    ${headerHTML(badgeClass, badgeLabel, heroColor, false, null)}
 
     <div class="section">
       <div class="section-title">Context Window</div>
@@ -176,50 +272,99 @@ function renderMain(state) {
     ${dailyHistoryHTML(history || [], platform)}
 
     <div class="footer">
-      <span class="footer-note">chars ÷ 4 · ±8% · v2.0.0</span>
+      <span class="footer-note">chars ÷ 4 · ±8% · v2.0.2</span>
       <button class="new-chat" id="new-chat-btn">+ New chat</button>
     </div>
   `;
 
+  document.getElementById("tips-btn").addEventListener("click", () => renderTips(state));
   document.getElementById("refresh-btn").addEventListener("click", () => {
     document.getElementById("refresh-btn").classList.add("spin");
     chrome.runtime.sendMessage({ type: "FORCE_REFRESH" });
     setTimeout(() => location.reload(), 1500);
   });
-
-  document.getElementById("settings-btn").addEventListener("click", () => {
-    renderSettings(state);
-  });
-
+  document.getElementById("settings-btn").addEventListener("click", () => renderSettings(state));
   document.getElementById("new-chat-btn").addEventListener("click", () => {
     chrome.tabs.update({ url: isClaude ? "https://claude.ai/new" : "https://chatgpt.com/" });
     window.close();
   });
 }
 
+// ── Tips view ──────────────────────────────────────────────────────
+function renderTips(state) {
+  const root      = document.getElementById("root");
+  const platform  = state.platform;
+  const isClaude  = platform === "claude";
+  const badgeClass = isClaude ? "badge-claude" : "badge-chatgpt";
+  const badgeLabel = isClaude ? "Claude" : "ChatGPT";
+  const tips       = getRandomTips(platform);
+
+  root.innerHTML = `
+    ${headerHTML(badgeClass, badgeLabel, TT.COLOR.GREEN, true, "tips")}
+
+    <div class="section" style="padding-bottom:8px">
+      <div class="section-title">Token Saving Tips · ${badgeLabel}</div>
+      <div style="font-size:10px;color:#0d3d42;margin-top:-6px;margin-bottom:4px">
+        Refreshes each time you open this panel
+      </div>
+    </div>
+
+    <div style="padding:0 14px 14px;display:flex;flex-direction:column;gap:10px">
+      ${tips.map((tip, i) => `
+        <div class="tip-card">
+          <div class="tip-num">0${i + 1}</div>
+          <div class="tip-title">${tip.title}</div>
+          <div class="tip-body">${tip.body}</div>
+          ${tip.prompt ? `
+            <div class="tip-prompt-wrap">
+              <div class="tip-prompt" id="tp-${i}">${tip.prompt}</div>
+              <button class="tip-copy-btn" data-idx="${i}" title="Copy prompt">Copy</button>
+            </div>` : ""}
+        </div>`).join("")}
+    </div>
+
+    <div class="footer">
+      <span class="footer-note">v2.0.2</span>
+      <button class="new-chat" id="more-tips-btn">Refresh tips</button>
+    </div>
+  `;
+
+  document.getElementById("back-btn").addEventListener("click", () => renderMain(state));
+  document.getElementById("more-tips-btn").addEventListener("click", () => renderTips(state));
+
+  // Copy prompt buttons
+  document.querySelectorAll(".tip-copy-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx    = btn.dataset.idx;
+      const text   = document.getElementById(`tp-${idx}`).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = "Copied!";
+        setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+      });
+    });
+  });
+}
+
 // ── Settings view ──────────────────────────────────────────────────
 function renderSettings(state) {
-  const root = document.getElementById("root");
+  const root      = document.getElementById("root");
+  const isClaude  = state.platform === "claude";
+  const badgeClass = isClaude ? "badge-claude" : "badge-chatgpt";
+  const badgeLabel = isClaude ? "Claude" : "ChatGPT";
 
-  // Load current settings
   chrome.storage.local.get([TT.KEY.SETTINGS], (r) => {
     const s = { ...TT.DEFAULTS, ...(r[TT.KEY.SETTINGS] || {}) };
 
     root.innerHTML = `
-      <div class="hd">
-        <div class="hd-left">
-          <button class="icon-btn" id="back-btn" style="font-size:13px;color:#2a6b72">←</button>
-          <span class="app-name">Settings</span>
-        </div>
-      </div>
+      ${headerHTML(badgeClass, badgeLabel, TT.COLOR.GREEN, true, "settings")}
 
       <div class="section">
         <div class="section-title">Notifications</div>
         <div class="data-card">
-          ${toggleRow("n50", "Alert at 50%", "Early warning", s.notify_50)}
-          ${toggleRow("n75", "Alert at 75%", "Early warning", s.notify_75)}
-          ${toggleRow("n90", "Alert at 90%", "Critical warning", s.notify_90)}
-          ${toggleRow("n100", "Alert at 100%", "Limit reached", s.notify_100)}
+          ${toggleRow("n50",  "Alert at 50%",  "Halfway warning",   s.notify_50)}
+          ${toggleRow("n75",  "Alert at 75%",  "Last call warning", s.notify_75)}
+          ${toggleRow("n90",  "Alert at 90%",  "Critical warning",  s.notify_90)}
+          ${toggleRow("n100", "Alert at 100%", "Limit reached",     s.notify_100)}
         </div>
       </div>
 
@@ -239,9 +384,9 @@ function renderSettings(state) {
               <div class="data-sub">Background refresh frequency</div>
             </div>
             <select id="refresh" class="sel">
-              <option value="1"  ${s.refresh_minutes === 1 ? "selected" : ""}>1 min</option>
-              <option value="2"  ${s.refresh_minutes === 2 ? "selected" : ""}>2 min</option>
-              <option value="5"  ${s.refresh_minutes === 5 ? "selected" : ""}>5 min</option>
+              <option value="1"  ${s.refresh_minutes === 1  ? "selected" : ""}>1 min</option>
+              <option value="2"  ${s.refresh_minutes === 2  ? "selected" : ""}>2 min</option>
+              <option value="5"  ${s.refresh_minutes === 5  ? "selected" : ""}>5 min</option>
               <option value="10" ${s.refresh_minutes === 10 ? "selected" : ""}>10 min</option>
               <option value="15" ${s.refresh_minutes === 15 ? "selected" : ""}>15 min</option>
             </select>
@@ -258,9 +403,9 @@ function renderSettings(state) {
         <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px">
           <div>
             <div style="font-size:12px;font-weight:600;color:#2a6b72">TokenPulse</div>
-            <div style="font-size:10px;color:#0d3d42;margin-top:2px">Built by Anoop Kumar & Mansi Rathore· Alpha</div>
+            <div style="font-size:10px;color:#0d3d42;margin-top:2px">Built by Anoop Kumar and Mansi Rathore · Alpha</div>
           </div>
-          <div style="font-size:10px;color:#0d3d42">v2.0.0</div>
+          <div style="font-size:10px;color:#0d3d42">v2.0.2</div>
         </div>
       </div>
     `;
@@ -269,16 +414,14 @@ function renderSettings(state) {
 
     document.getElementById("save-btn").addEventListener("click", async () => {
       const settings = {
-        notify_50: document.getElementById("n50").checked,
-        notify_75: document.getElementById("n75").checked,
-        notify_90: document.getElementById("n90").checked,
-        notify_100: document.getElementById("n100").checked,
-        show_bar: document.getElementById("show_bar").checked,
+        notify_50:       document.getElementById("n50").checked,
+        notify_75:       document.getElementById("n75").checked,
+        notify_90:       document.getElementById("n90").checked,
+        notify_100:      document.getElementById("n100").checked,
+        show_bar:        document.getElementById("show_bar").checked,
         refresh_minutes: parseInt(document.getElementById("refresh").value, 10),
       };
-
       await chrome.runtime.sendMessage({ type: "SAVE_SETTINGS", settings });
-
       const msg = document.getElementById("saved-msg");
       msg.style.opacity = "1";
       setTimeout(() => { msg.style.opacity = "0"; }, 2000);
@@ -305,16 +448,15 @@ function renderEmpty() {
   document.getElementById("root").innerHTML = `
     <div class="hd">
       <div class="hd-left">
-       fill="none"><circle cx="7" cy="7" r="5.5" stroke="#0d3d42" s 
-       <div class="logo">
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-    <circle cx="9" cy="9" r="7" stroke="#0d3d42" stroke-width="2"/>
-    <path d="M9 2 a7 7 0 0 1 6.06 3.5" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
-    <circle cx="9" cy="9" r="4" stroke="#0d3d42" stroke-width="1.5"/>
-    <path d="M9 5 a4 4 0 0 1 3.46 2 a4 4 0 0 1 0 4" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round"/>
-    <text x="9" y="12.5" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="7" font-weight="800" fill="white">T</text>
-  </svg>
-</div>
+        <div class="logo">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="9" r="7" stroke="#0d3d42" stroke-width="2"/>
+            <path d="M9 2 a7 7 0 0 1 6.06 3.5" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="9" cy="9" r="4" stroke="#0d3d42" stroke-width="1.5"/>
+            <path d="M9 5 a4 4 0 0 1 3.46 2 a4 4 0 0 1 0 4" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round"/>
+            <text x="9" y="12.5" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="7" font-weight="800" fill="white">T</text>
+          </svg>
+        </div>
         <span class="app-name">TokenPulse</span>
       </div>
       <div class="hd-right">
@@ -329,7 +471,7 @@ function renderEmpty() {
       </p>
     </div>
     <div class="footer">
-      <span class="footer-note">v2.0.0</span>
+      <span class="footer-note">v2.0.2</span>
     </div>
   `;
 }
@@ -337,26 +479,26 @@ function renderEmpty() {
 // ── Init ───────────────────────────────────────────────────────────
 async function init() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const url = tab?.url || "";
-  const ok = SUPPORTED.some(s => url.includes(s));
+  const url   = tab?.url || "";
+  const ok    = SUPPORTED.some(s => url.includes(s));
 
   if (!ok) { renderEmpty(); return; }
 
   const platform = url.includes("claude.ai") ? "claude" : "chatgpt";
-  const data = await chrome.runtime.sendMessage({ type: "GET_ALL_DATA" });
+  const data     = await chrome.runtime.sendMessage({ type: "GET_ALL_DATA" });
 
   try {
     const live = await chrome.tabs.sendMessage(tab.id, { type: "GET_CONTEXT_STATE" });
     if (live?.used !== undefined) {
-      data.context = data.context || {};
+      data.context           = data.context || {};
       data.context[platform] = { used: live.used, limit: live.limit };
     }
-  } catch (_) { }
+  } catch (_) {}
 
   renderMain({
-    usage: data.usage,
-    context: data.context || {},
-    history: data.history || [],
+    usage:    data.usage,
+    context:  data.context || {},
+    history:  data.history || [],
     platform,
   });
 }

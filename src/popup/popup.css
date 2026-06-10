@@ -4,7 +4,7 @@ html, body {
   width: 300px;
   min-width: 300px;
   max-width: 300px;
-  background: #021c1e;
+  background: #080808;
   color: #f0f0f0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -19,26 +19,29 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   display: flex; align-items: center;
   justify-content: space-between;
   padding: 13px 14px 12px;
-  border-bottom: 1px solid #0a2e32;
+  border-bottom: 1px solid #131313;
 }
 .hd-left  { display: flex; align-items: center; gap: 9px; }
 .hd-right { display: flex; align-items: center; gap: 7px; }
 
 .logo {
-  width: 28px; height: 28px; border-radius: 8px;
-  background: #021c1e;
-  border: 1.5px solid #0d3d42;
+  width: 24px; height: 24px; border-radius: 7px;
+  background: linear-gradient(135deg, #22c55e, #15803d);
   display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: #fff;
   flex-shrink: 0;
 }
-.app-name { font-size: 13px; font-weight: 600; color: #67e8f9; letter-spacing: .01em; }
+.app-name {
+  font-size: 13px; font-weight: 600;
+  color: #c0c0c0; letter-spacing: .01em;
+}
 
 .badge {
   font-size: 10px; font-weight: 700;
   padding: 3px 9px; border-radius: 20px;
   letter-spacing: .03em;
 }
-.badge-claude  { background: rgba(6,182,212,.12); color: #06b6d4; }
+.badge-claude  { background: rgba(232,137,74,.15); color: #e8894a; }
 .badge-chatgpt { background: rgba(25,195,125,.15);  color: #19c37d; }
 .badge-none    { background: rgba(255,255,255,.06);  color: #444; }
 
@@ -47,18 +50,18 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   border-radius: 50%; flex-shrink: 0;
 }
 .icon-btn {
-  background: none; color: #2a6b72;
+  background: none; color: #2e2e2e;
   font-size: 15px; padding: 3px 5px;
   border-radius: 5px; transition: color .15s;
 }
-.icon-btn:hover { color: #67e8f9; }
+.icon-btn:hover { color: #666; }
 .spin { animation: spin .6s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Section ──────────────────────────────────── */
 .section {
   padding: 14px 14px 12px;
-  border-bottom: 1px solid #0a2e32;
+  border-bottom: 1px solid #0f0f0f;
 }
 .section-title {
   font-size: 9px; font-weight: 700;
@@ -110,8 +113,8 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 
 /* ── Rate / History card ──────────────────────── */
 .data-card {
-  background: #031e21;
-  border: 1px solid #0d3d42;
+  background: #0d0d0d;
+  border: 1px solid #161616;
   border-radius: 10px;
   overflow: hidden;
 }
@@ -120,7 +123,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   justify-content: space-between;
   padding: 11px 13px;
 }
-.data-row + .data-row { border-top: 1px solid #0a2e32; }
+.data-row + .data-row { border-top: 1px solid #131313; }
 .data-left { display: flex; flex-direction: column; gap: 3px; }
 .data-name  { font-size: 12px; font-weight: 600; color: #888; }
 .data-sub   { font-size: 10px; color: #2e2e2e; }
@@ -135,7 +138,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   background: #1a1a1a; border-radius: 2px;
   overflow: hidden;
 }
-.mini-fill { height: 100%; border-radius: 2px; transition: width .5s ease; min-width: 3px; }
+.mini-fill { height: 100%; border-radius: 2px; transition: width .5s ease; }
 
 /* ── No history ───────────────────────────────── */
 .no-history {
@@ -154,13 +157,13 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 .new-chat {
   font-size: 10px; font-weight: 700;
   padding: 7px 16px; border-radius: 8px;
-  background: rgba(6,182,212,.08);
-  color: #06b6d4;
-  border: 1px solid rgba(6,182,212,.2);
+  background: rgba(34,197,94,.08);
+  color: #22c55e;
+  border: 1px solid rgba(34,197,94,.2);
   letter-spacing: .02em;
   transition: background .15s;
 }
-.new-chat:hover { background: rgba(6,182,212,.16); }
+.new-chat:hover { background: rgba(34,197,94,.16); }
 
 /* ── Empty ────────────────────────────────────── */
 .empty { padding: 40px 20px; text-align: center; }
@@ -169,7 +172,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 .empty-text strong { color: #555; }
 
 /* ── Color utilities ──────────────────────────── */
-.green  { color: #06b6d4; }
+.green  { color: #22c55e; }
 .yellow { color: #f59e0b; }
 .red    { color: #ef4444; }
 
@@ -188,8 +191,8 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   background: #3a3a3a; top: 2px; left: 2px;
   transition: transform .2s, background .2s;
 }
-.toggle input:checked + .track { background: rgba(6,182,212,.15); border-color: rgba(6,182,212,.3); }
-.toggle input:checked + .track::after { transform: translateX(18px); background: #06b6d4; }
+.toggle input:checked + .track { background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.3); }
+.toggle input:checked + .track::after { transform: translateX(18px); background: #22c55e; }
 
 /* ── Select ───────────────────────────────────── */
 .sel {
@@ -203,7 +206,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 /* ── Save button ──────────────────────────────── */
 .save-btn {
   width: 100%; padding: 12px;
-  background: #06b6d4; color: #000;
+  background: #22c55e; color: #000;
   border: none; border-radius: 9px;
   font-size: 12px; font-weight: 700;
   cursor: pointer; font-family: inherit;
@@ -214,6 +217,50 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 
 .saved-msg {
   text-align: center; font-size: 11px;
-  color: #06b6d4; margin-top: 8px;
+  color: #22c55e; margin-top: 8px;
   height: 16px; transition: opacity .3s;
 }
+
+/* ── Tips ─────────────────────────────────────── */
+.icon-btn-active { color: #06b6d4 !important; }
+
+.tip-card {
+  background: #031e21;
+  border: 1px solid #0d3d42;
+  border-radius: 10px;
+  padding: 14px;
+}
+.tip-num {
+  font-size: 9px; font-weight: 800;
+  letter-spacing: .12em; color: #0d3d42;
+  margin-bottom: 6px;
+}
+.tip-title {
+  font-size: 12px; font-weight: 700;
+  color: #67e8f9; margin-bottom: 5px;
+}
+.tip-body {
+  font-size: 11px; color: #2a6b72;
+  line-height: 1.6;
+}
+.tip-prompt-wrap {
+  margin-top: 10px;
+  position: relative;
+}
+.tip-prompt {
+  font-size: 11px; color: #06b6d4;
+  background: #021c1e; border: 1px solid #0d3d42;
+  border-radius: 6px; padding: 8px 52px 8px 10px;
+  line-height: 1.5; font-family: 'SF Mono', monospace;
+}
+.tip-copy-btn {
+  position: absolute; top: 50%; right: 8px;
+  transform: translateY(-50%);
+  font-size: 9px; font-weight: 700;
+  padding: 3px 8px; border-radius: 4px;
+  background: rgba(6,182,212,.1);
+  color: #06b6d4; border: 1px solid rgba(6,182,212,.2);
+  cursor: pointer; font-family: inherit;
+  transition: background .15s;
+}
+.tip-copy-btn:hover { background: rgba(6,182,212,.2); }
