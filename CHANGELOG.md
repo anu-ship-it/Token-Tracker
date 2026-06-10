@@ -12,3 +12,8 @@
 - Complete UI rebuild — teal color system replacing green
 - Both platforms now show Daily Usage History section
 - Notification logic overhauled — threshold-based not timer-based
+
+## [2.0.1] - 2026-06-09
+### Fixed
+- Get Started button on welcome page now redirects to claude.ai if window.close() is blocked
+- Corrected author name in welcome page
