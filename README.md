@@ -33,7 +33,7 @@ ChatGPT does not expose rate limit data via any API. Context window tracking wor
 ## Install
 
 ### Chrome Web Store
-Coming soon.
+git clone https://github.com/anu-ship-it/TokenPulse
 
 ### Manual (Developer Mode)
 1. Clone or download this repo
