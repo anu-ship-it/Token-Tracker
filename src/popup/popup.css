@@ -225,14 +225,14 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 .icon-btn-active { color: #06b6d4 !important; }
 
 .tip-card {
-  background: #031e21;
-  border: 1px solid #0d3d42;
+  background: #111111;
+  border: 1px solid #222222;
   border-radius: 10px;
   padding: 14px;
 }
 .tip-num {
   font-size: 9px; font-weight: 800;
-  letter-spacing: .12em; color: #0d3d42;
+  letter-spacing: .12em; color: #222222;
   margin-bottom: 6px;
 }
 .tip-title {
@@ -240,7 +240,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   color: #67e8f9; margin-bottom: 5px;
 }
 .tip-body {
-  font-size: 11px; color: #2a6b72;
+  font-size: 11px; color: #06b6d4;
   line-height: 1.6;
 }
 .tip-prompt-wrap {
@@ -249,7 +249,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 }
 .tip-prompt {
   font-size: 11px; color: #06b6d4;
-  background: #021c1e; border: 1px solid #0d3d42;
+  background: #0a0a0a; border: 1px solid #222222;
   border-radius: 6px; padding: 8px 52px 8px 10px;
   line-height: 1.5; font-family: 'SF Mono', monospace;
 }

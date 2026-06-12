@@ -12,8 +12,8 @@
   align-items: center;
   gap: 8px;
   padding: 5px 10px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
   border-radius: 8px;
 }
 .tt-label {
@@ -60,7 +60,7 @@
 body.dark .tt-inner,
 html.dark .tt-inner,
 [data-theme='dark'] .tt-inner {
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.05);
   border-color: rgba(255,255,255,0.08);
 }
 /* ── Popup ─────────────────────────────────────── */
