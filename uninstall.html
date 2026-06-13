@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You've uninstalled TokenPulse</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #080808; color: #f0f0f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh; display: flex;
+      align-items: center; justify-content: center;
+      padding: 40px 16px;
+    }
+    .card {
+      width: 100%; max-width: 480px;
+      background: #111; border: 1px solid #1e1e1e;
+      border-radius: 20px; padding: 44px 36px;
+      text-align: center;
+    }
+    .logo {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: #0a0a0a; border: 1.5px solid #222;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .logo svg { width: 36px; height: 36px; }
+
+    h1 { font-size: 20px; font-weight: 700; color: #f0f0f0; margin-bottom: 8px; }
+    .sub { font-size: 13px; color: #444; line-height: 1.6; margin-bottom: 32px; }
+
+    /* Reason selector */
+    .question {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: #333;
+      text-align: left; margin-bottom: 12px;
+    }
+    .reasons {
+      display: flex; flex-direction: column; gap: 8px;
+      margin-bottom: 20px; text-align: left;
+    }
+    .reason {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 14px;
+      background: #0a0a0a; border: 1px solid #1e1e1e;
+      border-radius: 8px; cursor: pointer;
+      transition: border-color .15s;
+    }
+    .reason:hover { border-color: #333; }
+    .reason.selected { border-color: #06b6d4; background: rgba(6,182,212,.06); }
+    .reason input[type="radio"] { display: none; }
+    .reason-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 1.5px solid #333; flex-shrink: 0;
+      transition: all .15s; display: flex;
+      align-items: center; justify-content: center;
+    }
+    .reason.selected .reason-dot {
+      border-color: #06b6d4; background: #06b6d4;
+    }
+    .reason.selected .reason-dot::after {
+      content: ""; width: 5px; height: 5px;
+      border-radius: 50%; background: #080808;
+    }
+    .reason-text { font-size: 13px; color: #888; }
+    .reason.selected .reason-text { color: #f0f0f0; }
+
+    /* Text area */
+    .detail-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: #333;
+      text-align: left; margin-bottom: 8px;
+    }
+    textarea {
+      width: 100%; padding: 12px 14px;
+      background: #0a0a0a; color: #f0f0f0;
+      border: 1px solid #1e1e1e; border-radius: 8px;
+      font-size: 13px; font-family: inherit;
+      resize: none; outline: none; line-height: 1.5;
+      transition: border-color .15s; margin-bottom: 20px;
+    }
+    textarea::placeholder { color: #2a2a2a; }
+    textarea:focus { border-color: #333; }
+
+    /* Buttons */
+    .submit-btn {
+      width: 100%; padding: 13px;
+      background: #06b6d4; color: #080808;
+      border: none; border-radius: 10px;
+      font-size: 13px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      transition: opacity .15s; margin-bottom: 14px;
+    }
+    .submit-btn:hover { opacity: .85; }
+    .submit-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .reinstall {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: #333;
+      text-decoration: none; transition: color .15s;
+    }
+    .reinstall:hover { color: #06b6d4; }
+
+    /* Success state */
+    .success { display: none; padding: 20px 0; }
+    .success-icon { font-size: 28px; margin-bottom: 12px; }
+    .success-title { font-size: 16px; font-weight: 700; color: #f0f0f0; margin-bottom: 6px; }
+    .success-sub { font-size: 12px; color: #444; line-height: 1.6; margin-bottom: 20px; }
+
+    .divider { height: 1px; background: #1a1a1a; margin: 20px 0; }
+
+    .built-by {
+      font-size: 10px; color: #222;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="18" r="15" stroke="#222" stroke-width="3.5"/>
+        <path d="M18 3 a15 15 0 0 1 13 7.5" stroke="#06b6d4" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="18" cy="18" r="9" stroke="#1a1a1a" stroke-width="3"/>
+        <path d="M18 9 a9 9 0 0 1 7.8 4.5 a9 9 0 0 1 0 9" stroke="#67e8f9" stroke-width="3" stroke-linecap="round"/>
+        <text x="18" y="22.5" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="11" font-weight="800" fill="white">T</text>
+      </svg>
+    </div>
+
+    <!-- Form state -->
+    <div id="form-state">
+      <h1>Sorry to see you go.</h1>
+      <p class="sub">Takes 10 seconds — helps us build something better.</p>
+
+      <div class="question">Why did you uninstall?</div>
+      <div class="reasons" id="reasons">
+        <label class="reason">
+          <input type="radio" name="reason" value="didn't work">
+          <div class="reason-dot"></div>
+          <span class="reason-text">Didn't work on my platform</span>
+        </label>
+        <label class="reason">
+          <input type="radio" name="reason" value="too many notifications">
+          <div class="reason-dot"></div>
+          <span class="reason-text">Too many notifications</span>
+        </label>
+        <label class="reason">
+          <input type="radio" name="reason" value="missing feature">
+          <div class="reason-dot"></div>
+          <span class="reason-text">Missing a feature I need</span>
+        </label>
+        <label class="reason">
+          <input type="radio" name="reason" value="found better option">
+          <div class="reason-dot"></div>
+          <span class="reason-text">Found a better option</span>
+        </label>
+        <label class="reason">
+          <input type="radio" name="reason" value="just testing">
+          <div class="reason-dot"></div>
+          <span class="reason-text">Just testing</span>
+        </label>
+        <label class="reason">
+          <input type="radio" name="reason" value="other">
+          <div class="reason-dot"></div>
+          <span class="reason-text">Other</span>
+        </label>
+      </div>
+
+      <div class="detail-label">Anything else? (optional)</div>
+      <textarea id="detail" rows="3" placeholder="Tell us what we could do better..."></textarea>
+
+      <button class="submit-btn" id="submit-btn">Send Feedback</button>
+      <a class="reinstall" href="https://chromewebstore.google.com/detail/tokenpulse-%E2%80%94-chatgpt-clau/oimclhdbljodjkankcnalklchfcehhic">
+        ↗ Reinstall TokenPulse
+      </a>
+    </div>
+
+    <!-- Success state -->
+    <div class="success" id="success-state">
+      <div class="success-icon">🙏</div>
+      <div class="success-title">Thanks for the feedback.</div>
+      <div class="success-sub">
+        We read every response and use it to improve TokenPulse.
+        If you ever want to come back, we'll be here.
+      </div>
+      <a class="reinstall" href="https://chromewebstore.google.com/detail/tokenpulse-%E2%80%94-chatgpt-clau/oimclhdbljodjkankcnalklchfcehhic">
+        ↗ Reinstall TokenPulse
+      </a>
+    </div>
+
+    <div class="built-by">Built by Anoop Kumar and Mansi Rathore · Alpha</div>
+  </div>
+
+  <script>
+    // Radio button styling
+    document.querySelectorAll(".reason").forEach(label => {
+      label.addEventListener("click", () => {
+        document.querySelectorAll(".reason").forEach(l => l.classList.remove("selected"));
+        label.classList.add("selected");
+      });
+    });
+
+    // Form submission
+    document.getElementById("submit-btn").addEventListener("click", async () => {
+      const reason = document.querySelector('input[name="reason"]:checked')?.value || "not selected";
+      const detail = document.getElementById("detail").value;
+      const btn    = document.getElementById("submit-btn");
+
+      btn.disabled    = true;
+      btn.textContent = "Sending...";
+
+      try {
+        const res = await fetch("https://formspree.io/f/xqeoqzdg", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body:    JSON.stringify({ reason, detail, type: "uninstall" }),
+        });
+
+        if (res.ok) {
+          document.getElementById("form-state").style.display    = "none";
+          document.getElementById("success-state").style.display = "block";
+        } else {
+          btn.disabled    = false;
+          btn.textContent = "Send Feedback";
+        }
+      } catch {
+        btn.disabled    = false;
+        btn.textContent = "Send Feedback";
+      }
+    });
+  </script>
+</body>
+</html>

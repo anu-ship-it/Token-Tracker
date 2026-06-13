@@ -10,6 +10,7 @@ const ICON = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmH
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   if (reason === "install") {
     chrome.tabs.create({ url: chrome.runtime.getURL("welcome/welcome.html") });
+    chrome.runtime.setUninstallURL("https://anu-ship-it.github.io/TokenPulse/uninstall.html");
   }
   await setupAlarm();
 });
