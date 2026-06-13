@@ -26,7 +26,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 
 .logo {
   width: 24px; height: 24px; border-radius: 7px;
-  background: linear-gradient(135deg, #22c55e, #15803d);
+  background: linear-gradient(135deg);
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 800; color: #fff;
   flex-shrink: 0;
@@ -50,11 +50,11 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   border-radius: 50%; flex-shrink: 0;
 }
 .icon-btn {
-  background: none; color: #2e2e2e;
+  background: none; color: #747474;
   font-size: 15px; padding: 3px 5px;
   border-radius: 5px; transition: color .15s;
 }
-.icon-btn:hover { color: #666; }
+.icon-btn:hover { color: #c6c2c2; }
 .spin { animation: spin .6s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -65,7 +65,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 }
 .section-title {
   font-size: 9px; font-weight: 700;
-  letter-spacing: .12em; color: #3a3a3a;
+  letter-spacing: .12em; color: #c8c6c6;
   text-transform: uppercase; margin-bottom: 12px;
 }
 
@@ -81,7 +81,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   font-variant-numeric: tabular-nums;
 }
 .ctx-used-label {
-  font-size: 9px; color: #333;
+  font-size: 9px; color: #cccaca;
   letter-spacing: .1em; text-transform: uppercase;
   margin-bottom: 6px;
 }
@@ -89,14 +89,14 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   display: flex; justify-content: space-between;
   margin-bottom: 10px;
 }
-.ctx-meta span { font-size: 11px; color: #444; font-variant-numeric: tabular-nums; }
-.ctx-meta .remaining { font-weight: 600; color: #666; }
+.ctx-meta span { font-size: 11px; color: #c3bfbf; font-variant-numeric: tabular-nums; }
+.ctx-meta .remaining { font-weight: 600; color: #f4f0f0; }
 
 /* ── Progress bar ─────────────────────────────── */
 .bar-wrap { margin-bottom: 6px; }
 .bar-track {
   width: 100%; height: 4px;
-  background: #181818; border-radius: 2px;
+  background: #4a4949; border-radius: 2px;
   overflow: hidden;
 }
 .bar-fill {
@@ -108,7 +108,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   display: flex; justify-content: space-between;
   align-items: center; margin-top: 5px;
 }
-.bar-end    { font-size: 9px; color: #222; }
+.bar-end    { font-size: 9px; color: #a0a0a0; }
 .bar-status { font-size: 9px; font-weight: 800; letter-spacing: .1em; }
 
 /* ── Rate / History card ──────────────────────── */
@@ -125,8 +125,8 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 }
 .data-row + .data-row { border-top: 1px solid #131313; }
 .data-left { display: flex; flex-direction: column; gap: 3px; }
-.data-name  { font-size: 12px; font-weight: 600; color: #888; }
-.data-sub   { font-size: 10px; color: #2e2e2e; }
+.data-name  { font-size: 12px; font-weight: 600; color: #afafaf; }
+.data-sub   { font-size: 10px; color: #696868; }
 .data-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
 .data-pct {
   font-size: 16px; font-weight: 800;
@@ -135,7 +135,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 }
 .mini-track {
   width: 80px; height: 3px;
-  background: #1a1a1a; border-radius: 2px;
+  background: #919090; border-radius: 2px;
   overflow: hidden;
 }
 .mini-fill { height: 100%; border-radius: 2px; transition: width .5s ease; }
@@ -143,7 +143,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 /* ── No history ───────────────────────────────── */
 .no-history {
   padding: 16px 13px;
-  font-size: 11px; color: #2e2e2e;
+  font-size: 11px; color: #8c8b8b;
   line-height: 1.7; text-align: center;
 }
 
@@ -153,12 +153,12 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   justify-content: space-between;
   padding: 11px 14px;
 }
-.footer-note { font-size: 9px; color: #1e1e1e; letter-spacing: .02em; }
+.footer-note { font-size: 9px; color: #acacac; letter-spacing: .02em; }
 .new-chat {
   font-size: 10px; font-weight: 700;
   padding: 7px 16px; border-radius: 8px;
   background: rgba(34,197,94,.08);
-  color: #22c55e;
+  color: #06b6d4;
   border: 1px solid rgba(34,197,94,.2);
   letter-spacing: .02em;
   transition: background .15s;
@@ -168,11 +168,11 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 /* ── Empty ────────────────────────────────────── */
 .empty { padding: 40px 20px; text-align: center; }
 .empty-icon { font-size: 28px; opacity: .15; margin-bottom: 14px; }
-.empty-text { font-size: 12px; color: #333; line-height: 1.8; }
+.empty-text { font-size: 12px; color: #b3b0b0; line-height: 1.8; }
 .empty-text strong { color: #555; }
 
 /* ── Color utilities ──────────────────────────── */
-.green  { color: #22c55e; }
+.green  { color: #06b6d4; }
 .yellow { color: #f59e0b; }
 .red    { color: #ef4444; }
 
@@ -192,11 +192,11 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
   transition: transform .2s, background .2s;
 }
 .toggle input:checked + .track { background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.3); }
-.toggle input:checked + .track::after { transform: translateX(18px); background: #22c55e; }
+.toggle input:checked + .track::after { transform: translateX(18px); background: #06b6d4; }
 
 /* ── Select ───────────────────────────────────── */
 .sel {
-  background: #141414; color: #666;
+  background: #141414; color: #b3b0b0;
   border: 1px solid #1e1e1e; border-radius: 7px;
   padding: 5px 9px; font-size: 11px;
   font-family: inherit; cursor: pointer;
@@ -206,7 +206,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 /* ── Save button ──────────────────────────────── */
 .save-btn {
   width: 100%; padding: 12px;
-  background: #22c55e; color: #000;
+  background: #06b6d4; color: #000;
   border: none; border-radius: 9px;
   font-size: 12px; font-weight: 700;
   cursor: pointer; font-family: inherit;
@@ -217,7 +217,7 @@ button { font-family: inherit; cursor: pointer; border: none; outline: none; }
 
 .saved-msg {
   text-align: center; font-size: 11px;
-  color: #22c55e; margin-top: 8px;
+  color: #06b6d4; margin-top: 8px;
   height: 16px; transition: opacity .3s;
 }
 
